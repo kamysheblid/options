@@ -1,0 +1,475 @@
+* Plot Python Script
+:PROPERTIES:
+:header-args: :tangle ~/workspace/trading/plot/plot.py
+:END:
+This script uses plotly to display information on options. The user
+enters some information on options like Strike, Time to Expiry, etc,
+and then it is plotted as well as some various Time and Prices.
+** Imports
+#+begin_src python
+  import numpy as np
+  import options
+  import pandas as pd
+  # Plotly and Dash Imports
+  import plotly.express as px
+  import plotly.graph_objects as go
+  from dash import Dash, dcc, html, Input, Output, callback, Patch, clientside_callback, ALL, MATCH
+  import plotly.io as pio
+  import dash_bootstrap_components as dbc
+  import dash_bootstrap_templates as dbt
+  import dash_ag_grid as dag
+#+end_src
+** Logger Init
+Prepare the logger for using throughout the program
+#+begin_src python
+  import logging
+  # Create logger and set level
+  logger = logging.getLogger(__name__)
+  logger.setLevel(logging.DEBUG)
+  # Create console handler and set level
+  ch = logging.StreamHandler()
+  ch.setLevel(logging.DEBUG)
+  # Create formatter
+  formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+  # Add formatter to ch
+  ch.setFormatter(formatter)
+  # Add ch to logger
+  logger.addHandler(ch)
+#+end_src
+** Dash Init
+#+begin_src python
+  fig = go.Figure()
+
+  dbt.load_figure_template(['minty', 'minty_dark'])
+  app = Dash(__name__, external_stylesheets=[dbc.themes.MINTY, dbc.icons.FONT_AWESOME], title="Options Pricing")
+#+end_src
+** Dash Components
+*** Dark Mode Components
+#+begin_src python
+  color_mode_switch = html.Span(
+      [dbc.Label(className="fa fa-moon", html_for="color_mode_switch"),
+       dbc.Switch(id="color-mode-switch", value=True, className='d-inline-block ms-1', persistence=True),
+       dbc.Label(className='fa fa-sun', html_for="color-mode-switch")])
+#+end_src
+*** Plot Tab Components
+**** General Plot Components
+This might have to change. Place the time and price rangeslider to
+the Plot Tab and get rid of the rest of it.
+
+Instead of having strike, vol, rate, etc. Inside the Options Tab we
+create as many options as we want and then just include those in the
+plot. So potentially we remove everything except the price and time
+rangeslider. All we would keep is those two and the graph.
+#+begin_src python
+  component_price_rangeslider = dcc.RangeSlider(min=1, max=5000, count=1, value=[2500,3500], id='price-range', tooltip={'placement':'bottom', 'always_visible':True})
+  component_time_rangeslider = dcc.RangeSlider(min=1, max=100, count=1, value=[1,60], id='time-range', tooltip={'placement':'bottom', 'always_visible':True})
+
+  component_strike_price = dcc.Input(id='strike-price', type='number', placeholder="Strike", value=3000, inputMode='numeric', debounce=True)
+  component_time = dcc.Input(id='amount-time', type='number', placeholder="Number of Days", value=7, inputMode='numeric', debounce=True)
+  component_volatility = dcc.Input(id='volatility', type='number', placeholder="Volatility", value=70, inputMode='numeric', debounce=True)
+  component_rate = dcc.Input(id='rate', type='number', placeholder="Rate", value=40, inputMode='numeric', debounce=True)
+  component_dividend = dcc.Input(id='dividend', type='number', placeholder="Dividend", value=40, inputMode='numeric', debounce=True)
+  component_option_type = dcc.RadioItems(id='option-type', options=['Put', 'Call'], value='Call', inline=False)
+
+  component_graph = dcc.Graph(id="price-graph", responsive=True)#, animate=True, animate_options={transition_duration=200})
+#+end_src
+**** TODO Possibly include Components (Excluded)
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+***** Call Components
+#+begin_src python
+  component_call_price = dcc.Input(id='call-price', type='number', placeholder='Price ($)')
+  component_call_strike = dcc.Input(id='call-strike', type='number', placeholder='Strike ($)')
+  component_call_time = dcc.Input(id='call-time', type='number', placeholder='Time (Days)')
+  component_call_vol = dcc.Input(id='call-vol', type='number', placeholder='Vol (%)')
+  component_call_rate = dcc.Input(id='call-rate', type='number', placeholder='Rate (%)')
+  component_call_dividend = dcc.Input(id='call-dividend', type='number', placeholder='Dividend (%)')
+#+end_src
+***** Put Components
+#+begin_src python
+  component_put_price = dcc.Input(id='put-price', type='number', placeholder='Price ($)')
+  component_put_strike = dcc.Input(id='put-strike', type='number', placeholder='Strike ($)')
+  component_put_time = dcc.Input(id='put-time', type='number', placeholder='Time (Days)')
+  component_put_vol = dcc.Input(id='put-vol', type='number', placeholder='Vol (%)')
+  component_put_rate = dcc.Input(id='put-rate', type='number', placeholder='Rate (%)')
+  component_put_dividend = dcc.Input(id='put-dividend', type='number', placeholder='Dividend (%)')
+#+end_src
+**** TODO Option Adding Components (Excluded)
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+begin_src python
+  component_call_calc = dbc.Row([
+      dbc.Row(["Call Calculator"]),
+      html.P(),
+      dbc.Row([
+          dbc.Col([component_option_price]),
+          dbc.Col([component_option_strike]),
+          dbc.Col([component_option_time]),
+          dbc.Col([component_option_vol]),
+          dbc.Col([component_option_rate]),
+          dbc.Col([component_option_dividend]),
+          dbc.Col([component_option_type]),
+      ], justify='center'),
+      html.P(),
+      dbc.Row([html.Div(id='call-calc')], justify='center')
+  ])
+  component_put_calc = dbc.Row([
+      dbc.Row(["Put Calculator"]),
+      html.P(),
+      dbc.Row([dbc.Col([component_put_price]),
+               dbc.Col([component_put_strike]),
+               dbc.Col([component_put_time]),
+               dbc.Col([component_put_vol]),
+               dbc.Col([component_put_rate]),
+               dbc.Col([component_put_dividend])], justify='center'),
+      html.P(),
+      dbc.Row([html.Div(id='put-calc')],justify='center')
+  ])
+#+end_src
+*** Option Tab Components
+#+begin_src python
+  options_container = dbc.Container(children=[
+      dbc.Button("Add Option", id="add-option-btn", n_clicks=0),
+      html.Div(id='container-div', children=[]),
+      html.Div(id='container-output-div')
+  ], fluid=True)
+#+end_src
+*** Dash Tabs Components
+The tabs need to be at the end of the components so that we can store
+them inside. Though which order should the tabs be in?
+#+begin_src python
+  tab_plot = dcc.Tab(id='tab-plot', label="Plot Tab", children=[
+      html.P(),
+      dbc.Row([component_price_rangeslider], justify='center'),
+      html.P(),
+      dbc.Row([component_time_rangeslider], justify='center'),
+      html.P(),
+      dbc.Row([
+          dbc.Col(["Strike Price ($): ", component_strike_price]),
+          dbc.Col(["Volatility (%): ", component_volatility]), 
+          dbc.Col(["Rate (%): ", component_rate]), 
+          dbc.Col(["Dividend (%): ", component_dividend]),
+          dbc.Col(["# of Time Components", component_time]),
+          dbc.Col([component_option_type], align='center')
+      ], justify='center', align='center'),
+      html.P(),
+      dbc.Row(component_graph, justify='center', align='center'),
+  ])
+
+  tab_options = dcc.Tab(id='tab-options', label="Options Tab", children=[
+      options_container])
+
+  tabs = dcc.Tabs(id='tabs', children=[
+      tab_options,
+      tab_plot,])
+#+end_src
+*** App Layout
+This stores the layout for the entire application.
+#+begin_src python
+  app.layout = dbc.Container(children=[
+      dbc.Row(children=[color_mode_switch], justify='center'), 
+      tabs
+  ], fluid=True)
+#+end_src
+**** TODO Old Layout (Excluded)
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+begin_src python
+  app.layout = dbc.Container(
+      [dbc.Row([color_mode_switch],justify='center'),
+       html.P(),
+       dbc.Row([component_price_rangeslider], justify='center'),
+       html.P(),
+       dbc.Row([component_time_rangeslider], justify='center'),
+       html.P(),
+       dbc.Row([
+           dbc.Col(["Strike Price ($): ", component_strike_price]),
+           dbc.Col(["Volatility (%): ", component_volatility]), 
+           dbc.Col(["Rate (%): ", component_rate]), 
+           dbc.Col(["Dividend (%): ", component_dividend]),
+           dbc.Col(["# of Time Components", component_time]),
+           dbc.Col([component_option_type], align='center')
+       ], justify='center', align='center'),
+       html.P(),
+       dbc.Row(component_graph, justify='center', align='center'),
+       html.P(),
+       component_call_calc,
+       html.P(),
+       component_put_calc,
+       ], fluid=False)
+
+#+end_src
+** Dash Callbacks
+*** Option Tab Callbacks
+**** Add/Delete New Options Callback
+An option row should have 
+#+begin_src python
+  def make_new_option(n_clicks):
+      logger.info(f'Making new option index={n_clicks}')
+      return dbc.Col(children=[
+          f"Option #{n_clicks}: ",
+          dcc.Input(id={'type': 'price', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Price ($)'),
+          dcc.Input(id={'type': 'strike', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Strike ($)'),
+          dcc.Input(id={'type': 'time', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Time (Days)'),
+          dcc.Input(id={'type': 'vol', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Vol (%)'),
+          dcc.Input(id={'type': 'rate', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Rate (%)'),
+          dcc.Input(id={'type': 'dividend', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Dividend (%)'),
+          dcc.RadioItems(id={'type': 'option-type', 'index': f'{n_clicks}'}, options=['Call', 'Put'], value='Call', inline=True),
+          dcc.Textarea(id={'type': 'text-area', 'index': f'{n_clicks}'}, readOnly=True, rows=1),
+          dbc.Button(id={'type': 'delete', 'index': f'{n_clicks}'}, name='Delete Option', color='danger'),
+      ], id={'type': 'option-row', 'index': f'{n_clicks}'}, align='center')
+
+  @callback(Output('container-div', 'children'),
+            Input('add-option-btn', 'n_clicks'))
+  def add_option(n_clicks):
+      logger.info(f'add_option arg: {n_clicks}')
+      patched_children = Patch()
+      new_option = make_new_option(n_clicks)
+      patched_children.append(new_option)
+      logger.info(f'Patched Children: {patched_children}')
+      return patched_children
+
+  @callback(Output(),
+            Input('type': 'delete', 'index'),
+            prevent_initial_call=True)
+  def delete_option(index):
+      logger.info(f'Clicked delete on option #{index}')
+      return
+#+end_src
+**** Update Options Callback
+#+begin_src python
+  @callback(Output({'type': 'text-area', 'index': MATCH}, 'value'),
+            [Input({'type': 'price', 'index': MATCH}, 'value'),
+             Input({'type': 'strike', 'index': MATCH}, 'value'),
+             Input({'type': 'time', 'index': MATCH}, 'value'),
+             Input({'type': 'vol', 'index': MATCH}, 'value'),
+             Input({'type': 'rate', 'index': MATCH}, 'value'),
+             Input({'type': 'dividend', 'index': MATCH}, 'value'),
+             Input({'type': 'option-type', 'index': MATCH}, 'value')])
+  def options_calculator(*vals):
+      if not all(vals):
+          return
+      price,strike,time,vol,rate,dividend,option_type = vals
+      if option_type.lower() == 'call':
+          optionfn = options.Call().optionfn
+      else:
+          optionfn = options.Put().optionfn
+      option_price = optionfn(price, strike, time, vol/100, rate/100, dividend/100)
+      logger.info(f'Calculating options price using ({vals}): {option_price}')
+      return f'{option_price}'
+#+end_src
+*** Plot Tab Callbacks
+**** Plot Callbacks
+#+begin_src python
+  @callback(Output("price-graph", "figure"),
+            [Input("{}".format(_), "value") for _ in ['price-range', 'strike-price', 'time-range', 'volatility', 'rate', 'dividend', 'option-type', 'amount-time']])
+  def render_plot(*vals):
+      logger.info(f'render_plot input args: {vals}')
+      price = np.linspace(*vals[0], 500)
+      strike = vals[1]
+      time_range = np.linspace(*vals[2],int(vals[7]),dtype=int)
+      volatility = vals[3]/100
+      rate = vals[4]/100
+      dividend = vals[5]/100
+      option_type = vals[6]
+      if option_type.lower() == 'call':
+          optionfn = options.Call().optionfn
+      else:
+          optionfn = options.Put().optionfn
+      df = pd.DataFrame({f"{time:d}d": optionfn(price, strike, time, volatility, rate, dividend) for time in time_range}, index=price)
+      fig = px.line(df, template="minty")
+      fig.update_layout(xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", template='plotly_dark', transition_duration=250)
+      fig.update_legends(title={'text':'Days to Expiry'})
+      # fig.update_traces(hoverinfo='text+name')
+      return fig
+#+end_src
+**** Range Callbacks
+#+begin_src python
+  @callback([Output("time-range",'min'),
+             Input("time-range",'value')])
+  def update_time_rangeslider_min(child):
+      return [max(0.5*child[0], 1)]
+
+  @callback([Output("time-range",'max'),
+             Input("time-range",'value')])
+  def update_time_rangeslider_max(child):
+      return [2*child[1]]
+
+  @callback([Output("price-range",'min'),
+             Input("price-range",'value')])
+  def update_price_rangeslider_min(child):
+      return [max(0.5*child[0], 1)]
+
+  @callback([Output("price-range",'max'),
+             Input("price-range",'value')])
+  def update_price_rangeslider_max(child):
+      return [2*child[1]]
+#+end_src
+*** Dark Mode Callbacks
+**** Whole Page Dark Mode
+#+begin_src python
+  clientside_callback("""(SwitchOn) => {
+  SwitchOn
+  ? document.documentElement.setAttribute('data-bs-theme', 'light')
+  : document.documentElement.setAttribute('data-bs-theme', 'dark')
+  return window.dash_clientside.no_update
+  }""",
+                      Output('color-mode-switch', 'id'),
+                      Input('color-mode-switch', 'value'))
+#+end_src
+**** TODO Plot Dark Mode (Excluded)
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+For the moment it is excluded. I cant get the patch to work.
+#+begin_src python
+  @callback(Output("price-graph", "figure"),
+            Input("color-mode-switch", "value"))
+  def update_figure_template(switch_on):
+      template = pio.templates["minty"] if switch_on else pio.templates["minty_dark"]
+      patch_figure = Patch()
+      patch_figure["layout"]["template"] = template
+      return patch_figure
+#+end_src
+*** TODO Two Options Calculators (Excluded)
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+begin_src python
+  @callback(Output('call-calc', 'children'),
+            [Input("{}".format(_), 'value') for _ in ['call-price', 'call-strike', 'call-time', 'call-vol', 'call-rate', 'call-dividend']])
+  def call_calc(*vals):
+      if all(vals):
+          args = list(vals)
+          args[3] = vals[3]/100
+          args[4] = vals[4]/100
+          args[5] = vals[5]/100
+          opt = options.Call().optionfn(*args)   
+          return f"Call: ${opt:.4g}"
+      else:
+          return ""
+
+  @callback(Output('put-calc', 'children'),
+            [Input("{}".format(_), 'value') for _ in ['put-price', 'put-strike', 'put-time', 'put-vol', 'put-rate', 'put-dividend']])
+  def put_calc(*vals):
+      if all(vals):
+          args = list(vals)
+          args[3] = vals[3]/100
+          args[4] = vals[4]/100
+          args[5] = vals[5]/100
+          opt = options.Put().optionfn(*args)
+          return f"Put: ${opt:.4g}"
+      else:
+          return ""
+#+end_src
+** Dash Start
+#+begin_src python
+  app.run(debug=True)
+#+end_src
+* Options Class
+:PROPERTIES:
+:header-args: :tangle ~/workspace/trading/plot/options.py
+:END:
+** Imports
+#+begin_src python
+  import sympy
+  from sympy import exp, oo, log, exp, sqrt, pi
+  from sympy.abc import z,q,r,T,S,K,sigma,delta, gamma,rho,theta
+  vega = sympy.symbols('vega')
+
+  put = 'put'
+  call = 'call'
+#+end_src
+** Options and Greeks Equations and Functions
+#+begin_src python
+  N = lambda x: (1/(2*pi)**0.5 * exp(-0.5*z**2)).integrate((z, -oo, x))
+  d1 = (log(S/K) + (r - q + sigma**2 / 2) * (T/365)) / (sigma*(T/365)**0.5)
+  d2 = (log(S/K) + (r - q - sigma**2 / 2) * (T/365)) / (sigma*(T/365)**0.5)
+
+  calleq = S*exp(-r*T/365)*N(d1) - K*exp(-q*T/365)*N(d2)
+  puteq = K*exp(-q*T/365)*N(-d2) - S*exp(-r*T/365)*N(-d1)
+  callfn = sympy.lambdify((S,K,T,sigma,r,q), calleq)
+  putfn = sympy.lambdify((S,K,T,sigma,r,q), puteq)
+
+  deltaeq = sympy.diff(calleq, S)
+  gammaeq = sympy.diff(deltaeq, S)
+  thetaeq = sympy.diff(calleq, T)
+  vegaeq = sympy.diff(calleq, sigma)
+  rhoeq = sympy.diff(calleq, r)
+  deltafn = sympy.lambdify((S,K,T,sigma,r,q), deltaeq)
+  gammafn = sympy.lambdify((S,K,T,sigma,r,q), gammaeq)
+  thetafn = sympy.lambdify((S,K,T,sigma,r,q), thetaeq)
+  vegafn = sympy.lambdify((S,K,T,sigma,r,q), vegaeq)
+  rhofn = sympy.lambdify((S,K,T,sigma,r,q), rhoeq)
+#+end_src
+** Classes
+*** Black Scholes Merton Class
+#+begin_src python
+  class BlackSholes:
+      """Option Class. Give it PRICE STRIKE TIME VOL RATE DIVIDEND and optionally OPTION_TYPE."""
+      def __init__(self, option_type = None):
+          if option_type and isinstance(option_type, str) and option_type.lower() == put:
+              self.option_type = 'put'
+              self.optioneq = puteq
+              self.optionfn = putfn
+          else:
+              self.option_type = call
+              self.optioneq = calleq
+              self.optionfn = callfn
+
+          self.deltaeq = sympy.diff(self.optioneq, S)
+          self.gammaeq = sympy.diff(self.deltaeq, S)
+          self.thetaeq = sympy.diff(self.optioneq, T)
+          self.vegaeq = sympy.diff(self.optioneq, sigma)
+          self.rhoeq = sympy.diff(self.optioneq, r)
+
+          self.deltafn = sympy.lambdify((S,K,T,sigma,r,q), self.deltaeq)
+          self.gammafn = sympy.lambdify((S,K,T,sigma,r,q), self.gammaeq)
+          self.thetafn = sympy.lambdify((S,K,T,sigma,r,q), self.thetaeq)
+          self.vegafn = sympy.lambdify((S,K,T,sigma,r,q), self.vegaeq)
+          self.rhofn = sympy.lambdify((S,K,T,sigma,r,q), self.rhoeq)
+          return
+      # def __eq__(self, other_option):
+      #     if other_option and self and self.price == other_option.price and self.strike == other_option.strike and self.time == other_option.time and self.vol == other_option.vol and self.rate == other_option.rate and self.dividend == other_option.dividend and self.option_fn == other_option.option_fn:
+      #         return True
+      #     return False
+      def greeks(self, *args):
+          return {delta: self.deltafn(*args),
+                  gamma: self.gammafn(*args),
+                  theta: self.thetafn(*args),
+                  vega: self.vegafn(*args),
+                  rho: self.rhofn(*args)}
+
+      def __repr__(self):
+          #<__main__.Option object at 0x7f7dd5ab9050>
+          # greeks_str = f"delta={self.delta:.2f} gamma={self.gamma:.6f} theta={self.theta:.2f} vega={self.vega:.2f} rho={self.rho:.2f}"
+          # return f"<Option object Price={self.price} Strike={self.strike} Time={self.time} Vol={self.vol} Rate={self.rate} Dividend={self.dividend} Type={self.option_type} Option Price={self.option_price:.2f} Greeks={greeks_str}>"
+          # return f"<Option object Price={self.price} Strike={self.strike} Time={self.time} Vol={self.vol} Rate={self.rate} Dividend={self.dividend} Type={self.option_type} Option Price={self.option_price:.2f}>"
+          return f"<Option object Type={self.option_type}>"
+
+#+end_src
+*** Call and Put Classes
+#+begin_src python
+  class Put(BlackSholes):
+      def __init__(self):
+          super(Put, self).__init__('put')
+          return
+
+  class Call(BlackSholes):
+      def __init__(self):
+          super(Call, self).__init__('call')
+          return
+#+end_src
+*** Option Class
+#+begin_src python
+  class Option(BlackSholes):
+      """Documentation for Option
+      """
+      def __init__(self, args):
+          super(Option, self).__init__()
+          self.args = args
+#+end_src
+
