@@ -4,11 +4,10 @@ import pandas as pd
 # Plotly and Dash Imports
 import plotly.express as px
 import plotly.graph_objects as go
-from dash import Dash, dcc, html, Input, Output, callback, Patch, clientside_callback, ALL, MATCH
 import plotly.io as pio
+from dash import Dash, dcc, html, Input, Output, callback, Patch, clientside_callback, ALL, MATCH
 import dash_bootstrap_components as dbc
 import dash_bootstrap_templates as dbt
-import dash_ag_grid as dag
 
 import logging
 # Create logger and set level
@@ -49,7 +48,7 @@ component_graph = dcc.Graph(id="price-graph", responsive=True)#, animate=True, a
 options_container = dbc.Container(children=[
     dbc.Button("Add Option", id="add-option-btn", n_clicks=0),
     html.Div(id='container-div', children=[]),
-    html.Div(id='container-output-div')
+    html.Div(id='container-output-div'),
 ], fluid=True)
 
 tab_plot = dcc.Tab(id='tab-plot', label="Plot Tab", children=[
@@ -84,19 +83,22 @@ app.layout = dbc.Container(children=[
 
 def make_new_option(n_clicks):
     logger.info(f'Making new option index={n_clicks}')
-    return dbc.Col(children=[
+    return dbc.Container(children=[
         f"Option #{n_clicks}: ",
-        dcc.Input(id={'type': 'price', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Price ($)'),
-        dcc.Input(id={'type': 'strike', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Strike ($)'),
-        dcc.Input(id={'type': 'time', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Time (Days)'),
-        dcc.Input(id={'type': 'vol', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Vol (%)'),
-        dcc.Input(id={'type': 'rate', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Rate (%)'),
-        dcc.Input(id={'type': 'dividend', "index": f'{n_clicks}'}, persistence=True, persistence_type='memory', type='number', placeholder='Dividend (%)'),
-        dcc.RadioItems(id={'type': 'option-type', 'index': f'{n_clicks}'}, options=['Call', 'Put'], value='Call', inline=True),
-        dcc.Textarea(id={'type': 'text-area', 'index': f'{n_clicks}'}, readOnly=True, rows=1),
-        dbc.Button(id={'type': 'delete', 'index': f'{n_clicks}'}, name='Delete Option', color='danger'),
-    ], id={'type': 'option-row', 'index': f'{n_clicks}'}, align='center')
-
+        dbc.Form(children=[
+            dcc.Input(id={'type': 'price', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Price ($)', min=0),
+            dcc.Input(id={'type': 'strike', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Strike ($)', min=0),
+            dcc.Input(id={'type': 'time', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Time (Days)', min=0),
+            dcc.Input(id={'type': 'vol', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Vol (%)', min=0),
+            dcc.Input(id={'type': 'rate', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Rate (%)', min=0),
+            dcc.Input(id={'type': 'dividend', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Dividend (%)', min=0),
+            dcc.RadioItems(id={'type': 'option-type', 'index': n_clicks}, options=['Call', 'Put'], value='Call', inline=True),
+        ], id={'type': 'option-form', 'index': n_clicks}),
+        dcc.Textarea(id={'type': 'text-area', 'index': n_clicks}, readOnly=True, rows=1),
+        dbc.Button(children="Delete Child", id={'type': 'delete', 'index': n_clicks}, value=n_clicks, type='button', active=True, size='sm'),
+        html.P(),
+    #], id={'type': 'option-row', 'index': n_clicks}, align='start')
+    ], id={'type': 'option-container', 'index': n_clicks}, fluid=True)
 @callback(Output('container-div', 'children', allow_duplicate=True),
           Input('add-option-btn', 'n_clicks'),
           prevent_initial_call=True)
@@ -105,17 +107,15 @@ def add_option(n_clicks):
     patched_children = Patch()
     new_option = make_new_option(n_clicks)
     patched_children.append(new_option)
-    logger.info(f'Patched Children: {patched_children}')
     return patched_children
 
-@callback(Output('container-div', 'children', allow_duplicate=True),
-          Input({'type': 'delete'}, 'n_clicks'),
+@callback(Output({'type': 'option-container', 'index': MATCH}, 'children'),
+          [Input({'type': 'delete', 'index': MATCH}, 'n_clicks'),
+           Input({'type': 'delete', 'index': MATCH}, 'value')],
           prevent_initial_call=True)
-def delete_option(*index):
-    logger.info(f'Clicked delete on option #{index}')
-    patched_list = Patch()
-    del patched_list[index]
-    return patched_list
+def delete_option(n_clicks, value):
+    logger.info(f'Clicked delete on option #{value}')
+    return None
 
 @callback(Output({'type': 'text-area', 'index': MATCH}, 'value'),
           [Input({'type': 'price', 'index': MATCH}, 'value'),
@@ -137,8 +137,9 @@ def options_calculator(*vals):
     logger.info(f'Calculating options price using ({vals}): {option_price}')
     return f'{option_price}'
 
-@callback(Output("price-graph", "figure"),
-          [Input("{}".format(_), "value") for _ in ['price-range', 'strike-price', 'time-range', 'volatility', 'rate', 'dividend', 'option-type', 'amount-time']])
+@callback(Output("price-graph", "figure", allow_duplicate=True),
+          [Input("{}".format(_), "value") for _ in ['price-range', 'strike-price', 'time-range', 'volatility', 'rate', 'dividend', 'option-type', 'amount-time']],
+          prevent_initial_call='initial_duplicate')
 def render_plot(*vals):
     logger.info(f'render_plot input args: {vals}')
     price = np.linspace(*vals[0], 500)
@@ -188,4 +189,13 @@ return window.dash_clientside.no_update
                     Output('color-mode-switch', 'id'),
                     Input('color-mode-switch', 'value'))
 
-app.run(debug=True, host='0.0.0.0')
+@callback(Output("price-graph", "figure", allow_duplicate=True),
+          Input("color-mode-switch", "value"),
+          prevent_initial_call='initial_duplicate')
+def update_figure_template(switch_on):
+    template = pio.templates["minty"] if switch_on else pio.templates["minty_dark"]
+    patch_figure = Patch()
+    patch_figure["layout"]["template"] = template
+    return patch_figure
+
+app.run(debug=False, host='0.0.0.0')

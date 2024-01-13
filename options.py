@@ -10,8 +10,8 @@ N = lambda x: (1/(2*pi)**0.5 * exp(-0.5*z**2)).integrate((z, -oo, x))
 d1 = (log(S/K) + (r - q + sigma**2 / 2) * (T/365)) / (sigma*(T/365)**0.5)
 d2 = (log(S/K) + (r - q - sigma**2 / 2) * (T/365)) / (sigma*(T/365)**0.5)
 
-calleq = S*exp(-r*T/365)*N(d1) - K*exp(-q*T/365)*N(d2)
-puteq = K*exp(-q*T/365)*N(-d2) - S*exp(-r*T/365)*N(-d1)
+calleq = S*exp(-q*T/365)*N(d1) - K*exp(-r*T/365)*N(d2)
+puteq = K*exp(-r*T/365)*N(-d2) - S*exp(-q*T/365)*N(-d1)
 callfn = sympy.lambdify((S,K,T,sigma,r,q), calleq)
 putfn = sympy.lambdify((S,K,T,sigma,r,q), puteq)
 
