@@ -14,10 +14,8 @@ and then it is plotted as well as some various Time and Prices.
   import plotly.express as px
   import plotly.graph_objects as go
   from dash import Dash, dcc, html, Input, Output, callback, Patch, clientside_callback, ALL, MATCH
-  import plotly.io as pio
   import dash_bootstrap_components as dbc
   import dash_bootstrap_templates as dbt
-  import dash_ag_grid as dag
 #+end_src
 ** Logger Init
 Prepare the logger for using throughout the program
@@ -205,7 +203,8 @@ This stores the layout for the entire application.
 ** Dash Callbacks
 *** Option Tab Callbacks
 **** Add/Delete New Options Callback
-An option row should have 
+An option row should have Price, Strike, Time, Volatility, Rate,
+Dividend, Option Type, and a Delete Button.
 #+begin_src python
   def make_new_option(n_clicks):
       logger.info(f'Making new option index={n_clicks}')
@@ -222,8 +221,9 @@ An option row should have
           dbc.Button(id={'type': 'delete', 'index': f'{n_clicks}'}, name='Delete Option', color='danger'),
       ], id={'type': 'option-row', 'index': f'{n_clicks}'}, align='center')
 
-  @callback(Output('container-div', 'children'),
-            Input('add-option-btn', 'n_clicks'))
+  @callback(Output('container-div', 'children', allow_duplicate=True),
+            Input('add-option-btn', 'n_clicks'),
+            prevent_initial_call=True)
   def add_option(n_clicks):
       logger.info(f'add_option arg: {n_clicks}')
       patched_children = Patch()
@@ -232,12 +232,14 @@ An option row should have
       logger.info(f'Patched Children: {patched_children}')
       return patched_children
 
-  @callback(Output(),
-            Input('type': 'delete', 'index'),
+  @callback(Output('container-div', 'children', allow_duplicate=True),
+            Input({'type': 'delete'}, 'n_clicks'),
             prevent_initial_call=True)
-  def delete_option(index):
+  def delete_option(*index):
       logger.info(f'Clicked delete on option #{index}')
-      return
+      patched_list = Patch()
+      del patched_list[index]
+      return patched_list
 #+end_src
 **** Update Options Callback
 #+begin_src python
@@ -367,7 +369,7 @@ For the moment it is excluded. I cant get the patch to work.
 #+end_src
 ** Dash Start
 #+begin_src python
-  app.run(debug=True)
+  app.run(debug=True, host='0.0.0.0')
 #+end_src
 * Options Class
 :PROPERTIES:

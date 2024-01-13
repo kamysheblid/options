@@ -97,8 +97,9 @@ def make_new_option(n_clicks):
         dbc.Button(id={'type': 'delete', 'index': f'{n_clicks}'}, name='Delete Option', color='danger'),
     ], id={'type': 'option-row', 'index': f'{n_clicks}'}, align='center')
 
-@callback(Output('container-div', 'children'),
-          Input('add-option-btn', 'n_clicks'))
+@callback(Output('container-div', 'children', allow_duplicate=True),
+          Input('add-option-btn', 'n_clicks'),
+          prevent_initial_call=True)
 def add_option(n_clicks):
     logger.info(f'add_option arg: {n_clicks}')
     patched_children = Patch()
@@ -106,6 +107,15 @@ def add_option(n_clicks):
     patched_children.append(new_option)
     logger.info(f'Patched Children: {patched_children}')
     return patched_children
+
+@callback(Output('container-div', 'children', allow_duplicate=True),
+          Input({'type': 'delete'}, 'n_clicks'),
+          prevent_initial_call=True)
+def delete_option(*index):
+    logger.info(f'Clicked delete on option #{index}')
+    patched_list = Patch()
+    del patched_list[index]
+    return patched_list
 
 @callback(Output({'type': 'text-area', 'index': MATCH}, 'value'),
           [Input({'type': 'price', 'index': MATCH}, 'value'),
@@ -178,4 +188,4 @@ return window.dash_clientside.no_update
                     Output('color-mode-switch', 'id'),
                     Input('color-mode-switch', 'value'))
 
-app.run(debug=True)
+app.run(debug=True, host='0.0.0.0')
