@@ -1,0 +1,18 @@
+[project]
+author = {name = "Kamy", email = "kamysheblid at gmail"}
+description = "Display Plots and Pricing of Options using Black Scholes Merton Equation."
+version = "0.0.1"
+dependencies = ['dash', 'plotly',
+	     'dash-bootstrap-components',
+	     'dash-core-components',
+	     'numpy',
+	     'sympy',
+	     'pandas']
+requires-python = ">=3.11"
+readme = {file = "code.org", content-type = "text/org"}
+license = 'private'
+classifiers = [ 
+	    "Development Status :: 3 - Alpha",
+	    "Intended Audience :: End-Users",
+	    "Topic :: Finance",
+	    "Programming Language :: Python :: 3.11.3"]
