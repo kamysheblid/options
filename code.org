@@ -38,7 +38,6 @@ Prepare the logger for using throughout the program
 ** Dash Init
 #+begin_src python
   fig = go.Figure()
-
   dbt.load_figure_template(['minty', 'minty_dark'])
   app = Dash(__name__, external_stylesheets=[dbc.themes.MINTY, dbc.icons.FONT_AWESOME], title="Options Pricing")
 #+end_src
@@ -372,40 +371,9 @@ For the moment it is excluded. I cant get the patch to work.
       patch_figure["layout"]["template"] = template
       return patch_figure
 #+end_src
-*** TODO Two Options Calculators (Excluded)
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-#+begin_src python
-  @callback(Output('call-calc', 'children'),
-            [Input("{}".format(_), 'value') for _ in ['call-price', 'call-strike', 'call-time', 'call-vol', 'call-rate', 'call-dividend']])
-  def call_calc(*vals):
-      if all(vals):
-          args = list(vals)
-          args[3] = vals[3]/100
-          args[4] = vals[4]/100
-          args[5] = vals[5]/100
-          opt = options.Call().optionfn(*args)   
-          return f"Call: ${opt:.4g}"
-      else:
-          return ""
-
-  @callback(Output('put-calc', 'children'),
-            [Input("{}".format(_), 'value') for _ in ['put-price', 'put-strike', 'put-time', 'put-vol', 'put-rate', 'put-dividend']])
-  def put_calc(*vals):
-      if all(vals):
-          args = list(vals)
-          args[3] = vals[3]/100
-          args[4] = vals[4]/100
-          args[5] = vals[5]/100
-          opt = options.Put().optionfn(*args)
-          return f"Put: ${opt:.4g}"
-      else:
-          return ""
-#+end_src
 ** Dash Start
 #+begin_src python
-  app.run(debug=False, host='0.0.0.0')
+  app.run(debug=True, host='0.0.0.0')
 #+end_src
 * Options Class
 :PROPERTIES:

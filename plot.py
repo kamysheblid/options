@@ -137,11 +137,7 @@ def options_calculator(*vals):
     logger.info(f'Calculating options price using ({vals}): {option_price}')
     return f'{option_price}'
 
-@callback(Output("price-graph", "figure", allow_duplicate=True),
-          [Input("{}".format(_), "value") for _ in ['price-range', 'strike-price', 'time-range', 'volatility', 'rate', 'dividend', 'option-type', 'amount-time']],
-          prevent_initial_call='initial_duplicate')
-def render_plot(*vals):
-    logger.info(f'render_plot input args: {vals}')
+def create_option_dataframe(vals):
     price = np.linspace(*vals[0], 500)
     strike = vals[1]
     time_range = np.linspace(*vals[2],int(vals[7]),dtype=int)
@@ -234,4 +230,4 @@ def update_figure_template(switch_on):
     patch_figure["layout"]["template"] = template
     return patch_figure
 
-app.run(debug=False, host='0.0.0.0')
+app.run(debug=True, host='0.0.0.0')
