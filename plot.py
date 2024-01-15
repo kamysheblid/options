@@ -24,7 +24,6 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 fig = go.Figure()
-
 dbt.load_figure_template(['minty', 'minty_dark'])
 app = Dash(__name__, external_stylesheets=[dbc.themes.MINTY, dbc.icons.FONT_AWESOME], title="Options Pricing")
 
@@ -51,7 +50,7 @@ options_container = dbc.Container(children=[
     html.Div(id='container-output-div'),
 ], fluid=True)
 
-tab_plot = dcc.Tab(id='tab-plot', label="Plot Tab", children=[
+tab_plot = dcc.Tab(id={'type': 'tab', 'index': 'plot'}, label="Plot Tab", children=[
     html.P(),
     dbc.Row([component_price_rangeslider], justify='center'),
     html.P(),
@@ -67,11 +66,12 @@ tab_plot = dcc.Tab(id='tab-plot', label="Plot Tab", children=[
     ], justify='center', align='center'),
     html.P(),
     dbc.Row(component_graph, justify='center', align='center'),
-])
-
-tab_options = dcc.Tab(id='tab-options', label="Options Tab", children=[
+],
+                   selected_style={'borderTop': '2px solid green', 'border': '1px solid blue', 'color': 'black'}, 
+                   disabled_style={'borderTop': '1px solid blue', 'border': '1px solid white', 'color': 'purple'}
+                   )
+tab_options = dcc.Tab(id={'type': 'tab', 'index': 'options'}, label="Options Tab", children=[
     options_container])
-
 tabs = dcc.Tabs(id='tabs', children=[
     tab_options,
     tab_plot,])
@@ -90,8 +90,8 @@ def make_new_option(n_clicks):
             dcc.Input(id={'type': 'strike', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Strike ($)', min=0),
             dcc.Input(id={'type': 'time', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Time (Days)', min=0),
             dcc.Input(id={'type': 'vol', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Vol (%)', min=0),
-            dcc.Input(id={'type': 'rate', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Rate (%)', min=0),
-            dcc.Input(id={'type': 'dividend', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Dividend (%)', min=0),
+            dcc.Input(id={'type': 'rate', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Rate (%)'),
+            dcc.Input(id={'type': 'dividend', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Dividend (%)'),
             dcc.RadioItems(id={'type': 'option-type', 'index': n_clicks}, options=['Call', 'Put'], value='Call', inline=True),
         ], id={'type': 'option-form', 'index': n_clicks}),
         dcc.Textarea(id={'type': 'text-area', 'index': n_clicks}, readOnly=True, rows=1),
@@ -154,10 +154,19 @@ def render_plot(*vals):
     else:
         optionfn = options.Put().optionfn
     df = pd.DataFrame({f"{time:d}d": optionfn(price, strike, time, volatility, rate, dividend) for time in time_range}, index=price)
-    fig = px.line(df, template="minty")
-    fig.update_layout(xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", template='plotly_dark', transition_duration=250)
+    return df
+
+@callback(Output("price-graph", "figure", allow_duplicate=True),
+          [Input("{}".format(_), "value") for _ in ['price-range', 'strike-price', 'time-range', 'volatility', 'rate', 'dividend', 'option-type', 'amount-time']],
+          prevent_initial_call='initial_duplicate')
+def render_plot(*vals):
+    logger.info(f'render_plot input args: {vals}')
+    df = create_option_dataframe(vals)
+    fig = px.line(df, template="minty", labels='label')
+    hover_template = "<br>".join(["Asset Price: $%{x}", "Option Price: $%{y}"]) + "<extra></extra>"
+    fig.update_layout(yaxis={'type': 'log'}, xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", transition_duration=250, template='plotly_dark', hovermode='x unified')
     fig.update_legends(title={'text':'Days to Expiry'})
-    # fig.update_traces(hoverinfo='text+name')
+    #fig.update_traces(hovertemplate=hover_template)
     return fig
 
 @callback([Output("time-range",'min'),
@@ -188,6 +197,33 @@ return window.dash_clientside.no_update
 }""",
                     Output('color-mode-switch', 'id'),
                     Input('color-mode-switch', 'value'))
+
+@callback(Output({'type': 'tab'}, 'style'),
+          Input('color-mode-switch', 'value'))
+def update_tabs_darkmode(switch_on):
+    patch = Patch()
+    patch_styles = Patch()
+
+    style = "border: 1px solid rgb(229,229,229); border-style: solid; border-radius: 0; border-width: 0px 0px 1px 0px;"
+    selected_style = 'border-top: 2px solid #2186f4; background-color: #ffffff; border: 1px solid rgb(229,229,229); color: #3f3f3f'
+    darkmode_style="border-bottom: 1px solid rgb(214, 214, 214); padding: 6px; font-weight: bold;"
+    darkmode_selected_style="border-top: 1px solid rgb(214, 214, 214); border-bottom: 1px solid rgb(214, 214, 214); background-color: rgb(17, 157, 255); color: white; padding: 6px;"
+
+
+    disabled_style = {'borderTop': '1px solid black', 'border': '1px solid green', 'color': 'blue'}
+    selected_style = {'borderTop': '2px solid blue', 'border': '1px solid black', 'color': 'green'}
+    darkmode_disabled_style = {'borderTop': '1px solid blue', 'border': '1px solid white', 'color': 'purple'}
+    darkmode_selected_style = {'borderTop': '2px solid green', 'border': '1px solid blue', 'color': 'black'}
+
+    if switch_on:
+        patch['props']['disabled_style'] = darkmode_disabled_style
+        patch['props']['selected_style'] = darkmode_selected_style
+        patch_styles = {'disabled_style': darkmode_disabled_style, 'selected_style': darkmode_selected_style}
+    else:
+        patch['props']['disabled_style'] = disabled_style
+        patch['props']['selected_style'] = selected_style
+        patch_styles = {'disabled_style': disabled_style, 'selected_style': selected_style}
+    return patch_styles
 
 @callback(Output("price-graph", "figure", allow_duplicate=True),
           Input("color-mode-switch", "value"),
