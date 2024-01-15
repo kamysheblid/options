@@ -38,16 +38,15 @@ Prepare the logger for using throughout the program
 ** Dash Init
 #+begin_src python
   fig = go.Figure()
-  dbt.load_figure_template(['minty', 'minty_dark'])
   app = Dash(__name__, external_stylesheets=[dbc.themes.MINTY, dbc.icons.FONT_AWESOME], title="Options Pricing")
 #+end_src
 ** Dash Components
-*** Dark Mode Components
+*** Dark Mode Components                                           :darkmode:
+**** Working Dark Mode
 #+begin_src python
-  color_mode_switch = html.Span(
-      [dbc.Label(className="fa fa-moon", html_for="color_mode_switch"),
-       dbc.Switch(id="color-mode-switch", value=True, className='d-inline-block ms-1', persistence=True),
-       dbc.Label(className='fa fa-sun', html_for="color-mode-switch")])
+  dbt.load_figure_template(['minty_dark', 'minty'])
+
+  color_mode_switch = dbt.ThemeSwitchAIO(aio_id='theme', themes=[dbc.themes.MINTY, dbc.themes.CYBORG], switch_props={'persistence': True})
 #+end_src
 *** Plot Tab Components
 **** General Plot Components
@@ -59,72 +58,17 @@ create as many options as we want and then just include those in the
 plot. So potentially we remove everything except the price and time
 rangeslider. All we would keep is those two and the graph.
 #+begin_src python
-  component_price_rangeslider = dcc.RangeSlider(min=1, max=5000, count=1, value=[2500,3500], id='price-range', tooltip={'placement':'bottom', 'always_visible':True})
-  component_time_rangeslider = dcc.RangeSlider(min=1, max=100, count=1, value=[1,60], id='time-range', tooltip={'placement':'bottom', 'always_visible':True})
+  component_price_rangeslider = dcc.RangeSlider(min=1, max=5000, count=1, value=[2000,3500], id='price-range', tooltip={'placement':'bottom', 'always_visible':True})
+  component_time_rangeslider = dcc.RangeSlider(min=1, max=100, count=1, value=[1,90], id='time-range', tooltip={'placement':'bottom', 'always_visible':True})
 
-  component_strike_price = dcc.Input(id='strike-price', type='number', placeholder="Strike", value=3000, inputMode='numeric', debounce=True)
-  component_time = dcc.Input(id='amount-time', type='number', placeholder="Number of Days", value=7, inputMode='numeric', debounce=True)
-  component_volatility = dcc.Input(id='volatility', type='number', placeholder="Volatility", value=70, inputMode='numeric', debounce=True)
-  component_rate = dcc.Input(id='rate', type='number', placeholder="Rate", value=40, inputMode='numeric', debounce=True)
-  component_dividend = dcc.Input(id='dividend', type='number', placeholder="Dividend", value=40, inputMode='numeric', debounce=True)
-  component_option_type = dcc.RadioItems(id='option-type', options=['Put', 'Call'], value='Call', inline=False)
+  component_strike_price = dbc.Input(id='strike-price', type='number', placeholder="Strike", value=3000, inputMode='numeric', debounce=True)
+  component_time = dbc.Input(id='amount-time', type='number', placeholder="Number of Days", value=7, inputMode='numeric', debounce=True)
+  component_volatility = dbc.Input(id='volatility', type='number', placeholder="Volatility", value=70, inputMode='numeric', debounce=True)
+  component_rate = dbc.Input(id='rate', type='number', placeholder="Rate", value=15, inputMode='numeric', debounce=True)
+  component_dividend = dbc.Input(id='dividend', type='number', placeholder="Dividend", value=0.1, inputMode='numeric', debounce=True)
+  component_option_type = dbc.RadioItems(id='option-type', options=['Put', 'Call'], value='Call', inline=False)
 
-  component_graph = dcc.Graph(id="price-graph", responsive=True)#, animate=True, animate_options={transition_duration=200})
-#+end_src
-**** TODO Possibly include Components (Excluded)
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-***** Call Components
-#+begin_src python
-  component_call_price = dcc.Input(id='call-price', type='number', placeholder='Price ($)')
-  component_call_strike = dcc.Input(id='call-strike', type='number', placeholder='Strike ($)')
-  component_call_time = dcc.Input(id='call-time', type='number', placeholder='Time (Days)')
-  component_call_vol = dcc.Input(id='call-vol', type='number', placeholder='Vol (%)')
-  component_call_rate = dcc.Input(id='call-rate', type='number', placeholder='Rate (%)')
-  component_call_dividend = dcc.Input(id='call-dividend', type='number', placeholder='Dividend (%)')
-#+end_src
-***** Put Components
-#+begin_src python
-  component_put_price = dcc.Input(id='put-price', type='number', placeholder='Price ($)')
-  component_put_strike = dcc.Input(id='put-strike', type='number', placeholder='Strike ($)')
-  component_put_time = dcc.Input(id='put-time', type='number', placeholder='Time (Days)')
-  component_put_vol = dcc.Input(id='put-vol', type='number', placeholder='Vol (%)')
-  component_put_rate = dcc.Input(id='put-rate', type='number', placeholder='Rate (%)')
-  component_put_dividend = dcc.Input(id='put-dividend', type='number', placeholder='Dividend (%)')
-#+end_src
-**** TODO Option Adding Components (Excluded)
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-#+begin_src python
-  component_call_calc = dbc.Row([
-      dbc.Row(["Call Calculator"]),
-      html.P(),
-      dbc.Row([
-          dbc.Col([component_option_price]),
-          dbc.Col([component_option_strike]),
-          dbc.Col([component_option_time]),
-          dbc.Col([component_option_vol]),
-          dbc.Col([component_option_rate]),
-          dbc.Col([component_option_dividend]),
-          dbc.Col([component_option_type]),
-      ], justify='center'),
-      html.P(),
-      dbc.Row([html.Div(id='call-calc')], justify='center')
-  ])
-  component_put_calc = dbc.Row([
-      dbc.Row(["Put Calculator"]),
-      html.P(),
-      dbc.Row([dbc.Col([component_put_price]),
-               dbc.Col([component_put_strike]),
-               dbc.Col([component_put_time]),
-               dbc.Col([component_put_vol]),
-               dbc.Col([component_put_rate]),
-               dbc.Col([component_put_dividend])], justify='center'),
-      html.P(),
-      dbc.Row([html.Div(id='put-calc')],justify='center')
-  ])
+  component_graph = dcc.Graph(id="price-graph", responsive=True)
 #+end_src
 *** Option Tab Components
 #+begin_src python
@@ -135,10 +79,10 @@ rangeslider. All we would keep is those two and the graph.
   ], fluid=True)
 #+end_src
 *** Dash Tabs Components
-The tabs need to be at the end of the components so that we can store
-them inside. Though which order should the tabs be in?
+Setting persistence on the tab keeps us in the correct tab we want.
 #+begin_src python
-  tab_plot = dcc.Tab(id={'type': 'tab', 'index': 'plot'}, label="Plot Tab", children=[
+  tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
+      dbc.Container(children=[
       html.P(),
       dbc.Row([component_price_rangeslider], justify='center'),
       html.P(),
@@ -153,78 +97,53 @@ them inside. Though which order should the tabs be in?
           dbc.Col([component_option_type], align='center')
       ], justify='center', align='center'),
       html.P(),
-      dbc.Row(component_graph, justify='center', align='center'),
-  ],
-                     selected_style={'borderTop': '2px solid green', 'border': '1px solid blue', 'color': 'black'}, 
-                     disabled_style={'borderTop': '1px solid blue', 'border': '1px solid white', 'color': 'purple'}
-                     )
-  tab_options = dcc.Tab(id={'type': 'tab', 'index': 'options'}, label="Options Tab", children=[
+      dbc.Row(component_graph, justify='center', align='center')],
+                    fluid=True)])
+
+  tab_options = dbc.Tab(id='option-tab', label="Options Tab", children=[
       options_container])
-  tabs = dcc.Tabs(id='tabs', children=[
+
+  tabs = dbc.Tabs(id='tabs', children=[
       tab_options,
-      tab_plot,])
+      tab_plot,], persistence=True, persistence_type='memory')
 #+end_src
 *** App Layout
-This stores the layout for the entire application.
+This stores the layout for the entire application. The classname
+allows the theme changer to set it to dark mode or whatever other
+theme.
 #+begin_src python
   app.layout = dbc.Container(children=[
       dbc.Row(children=[color_mode_switch], justify='center'), 
       tabs
-  ], fluid=True)
-#+end_src
-**** TODO Old Layout (Excluded)
-:PROPERTIES:
-:header-args: :tangle no
-:END:
-#+begin_src python
-  app.layout = dbc.Container(
-      [dbc.Row([color_mode_switch],justify='center'),
-       html.P(),
-       dbc.Row([component_price_rangeslider], justify='center'),
-       html.P(),
-       dbc.Row([component_time_rangeslider], justify='center'),
-       html.P(),
-       dbc.Row([
-           dbc.Col(["Strike Price ($): ", component_strike_price]),
-           dbc.Col(["Volatility (%): ", component_volatility]), 
-           dbc.Col(["Rate (%): ", component_rate]), 
-           dbc.Col(["Dividend (%): ", component_dividend]),
-           dbc.Col(["# of Time Components", component_time]),
-           dbc.Col([component_option_type], align='center')
-       ], justify='center', align='center'),
-       html.P(),
-       dbc.Row(component_graph, justify='center', align='center'),
-       html.P(),
-       component_call_calc,
-       html.P(),
-       component_put_calc,
-       ], fluid=False)
-
+  ], fluid=True, className='m-4 dbc')
 #+end_src
 ** Dash Callbacks
 *** Option Tab Callbacks
-**** Add/Delete New Options Callback
+**** TODO Add/Delete New Options Callback
 An option row should have Price, Strike, Time, Volatility, Rate,
 Dividend, Option Type, and a Delete Button.
+
+TODO: add some labeling using textbox labels in dbc or something.
 #+begin_src python
   def make_new_option(n_clicks):
       logger.info(f'Making new option index={n_clicks}')
       return dbc.Container(children=[
           f"Option #{n_clicks}: ",
           dbc.Form(children=[
-              dcc.Input(id={'type': 'price', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Price ($)', min=0),
-              dcc.Input(id={'type': 'strike', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Strike ($)', min=0),
-              dcc.Input(id={'type': 'time', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Time (Days)', min=0),
-              dcc.Input(id={'type': 'vol', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Vol (%)', min=0),
-              dcc.Input(id={'type': 'rate', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Rate (%)'),
-              dcc.Input(id={'type': 'dividend', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', placeholder='Dividend (%)'),
-              dcc.RadioItems(id={'type': 'option-type', 'index': n_clicks}, options=['Call', 'Put'], value='Call', inline=True),
+              dbc.Input(id={'type': 'price', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', inputmode='numeric', placeholder='Price ($)', min=0),
+              dbc.Input(id={'type': 'strike', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', inputmode='numeric', placeholder='Strike ($)', min=0),
+              dbc.Input(id={'type': 'time', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', inputmode='numeric', placeholder='Time (Days)', min=0),
+              dbc.Input(id={'type': 'vol', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', inputmode='numeric', placeholder='Vol (%)', min=0),
+              dbc.Input(id={'type': 'rate', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', inputmode='numeric', placeholder='Rate (%)'),
+              dbc.Input(id={'type': 'dividend', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', inputmode='numeric', placeholder='Dividend (%)'),
+              dbc.RadioItems(id={'type': 'option-type', 'index': n_clicks}, options=['Call', 'Put'], value='Call', inline=True),
           ], id={'type': 'option-form', 'index': n_clicks}),
-          dcc.Textarea(id={'type': 'text-area', 'index': n_clicks}, readOnly=True, rows=1),
+          dbc.Textarea(id={'type': 'text-area', 'index': n_clicks}, readOnly=True, rows=1),
           dbc.Button(children="Delete Child", id={'type': 'delete', 'index': n_clicks}, value=n_clicks, type='button', active=True, size='sm'),
           html.P(),
       #], id={'type': 'option-row', 'index': n_clicks}, align='start')
       ], id={'type': 'option-container', 'index': n_clicks}, fluid=True)
+
   @callback(Output('container-div', 'children', allow_duplicate=True),
             Input('add-option-btn', 'n_clicks'),
             prevent_initial_call=True)
@@ -253,20 +172,23 @@ Dividend, Option Type, and a Delete Button.
              Input({'type': 'rate', 'index': MATCH}, 'value'),
              Input({'type': 'dividend', 'index': MATCH}, 'value'),
              Input({'type': 'option-type', 'index': MATCH}, 'value')])
-  def options_calculator(*vals):
-      if not all(vals):
-          return
-      price,strike,time,vol,rate,dividend,option_type = vals
+  def options_calculator(price, strike, time, vol, rate, dividend, option_type):
+      if not all([price, strike, time, vol, rate, dividend, option_type]):
+          return "Fill All Fields"
       if option_type.lower() == 'call':
           optionfn = options.Call().optionfn
-      else:
+      elif option_type.lower() == 'put':
           optionfn = options.Put().optionfn
       option_price = optionfn(price, strike, time, vol/100, rate/100, dividend/100)
       logger.info(f'Calculating options price using ({vals}): {option_price}')
-      return f'{option_price}'
+      return f'{option_price:.3g}'
 #+end_src
 *** Plot Tab Callbacks
-**** Plot Callbacks
+**** CANCELLED Plot Callbacks
+CLOSED: [2024-01-15 Mon 21:35]
+:PROPERTIES:
+:header-args: :tangle no
+:END:
 #+begin_src python
   def create_option_dataframe(vals):
       price = np.linspace(*vals[0], 500)
@@ -291,10 +213,41 @@ Dividend, Option Type, and a Delete Button.
       df = create_option_dataframe(vals)
       fig = px.line(df, template="minty", labels='label')
       hover_template = "<br>".join(["Asset Price: $%{x}", "Option Price: $%{y}"]) + "<extra></extra>"
-      fig.update_layout(yaxis={'type': 'log'}, xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", transition_duration=250, template='plotly_dark', hovermode='x unified')
+      fig.update_layout(yaxis={'type': 'log'}, xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", transition_duration=250)
       fig.update_legends(title={'text':'Days to Expiry'})
-      #fig.update_traces(hovertemplate=hover_template)
       return fig
+#+end_src
+**** New Plot Callbacks
+#+begin_src python
+def create_option_dataframe(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time):
+    price = np.linspace(*price_range, 500)
+    time_range = np.linspace(*time_range,int(amount_time),dtype=int)
+    if option_type.lower() == 'call':
+        optionfn = options.Call().optionfn
+    else:
+        optionfn = options.Put().optionfn
+    df = pd.DataFrame({f"{time:d}d": optionfn(price, strike, time, vol/100, rate/100, dividend/100) for time in time_range}, index=price)
+    return df
+
+@callback(Output("price-graph", "figure", allow_duplicate=True),
+          [Input("price-range","value"),
+           Input("strike-price","value"),
+           Input("time-range","value"),
+           Input("volatility","value"),
+           Input("rate","value"),
+           Input("dividend","value"),
+           Input("option-type","value"),
+           Input("amount-time","value"),
+           Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value')],
+          prevent_initial_call='initial_duplicate')
+def render_plot(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time, theme):
+    df = create_option_dataframe(price_range, strike, time_range, vol, rate,
+                                 dividend, option_type, amount_time)
+    fig = px.scatter(df, labels='label', template='minty' if theme else 'minty_dark')
+    hover_template = "<br>".join(["Asset Price: $%{x}", "Option Price: $%{y}"]) + "<extra></extra>"
+    fig.update_layout(xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", transition_duration=200)
+    fig.update_legends(title={'text':'Days to Expiry'})
+    return fig
 #+end_src
 **** Range Callbacks
 #+begin_src python
@@ -319,8 +272,10 @@ Dividend, Option Type, and a Delete Button.
       return [2*child[1]]
 #+end_src
 *** Dark Mode Callbacks
-**** Whole Page Dark Mode
-#+begin_src python
+**** CANCELLED Whole Page Dark Mode
+CLOSED: [2024-01-15 Mon 21:36]
+May be unnecessary since theme changer handles everything
+#+begin_src python :tangle no
   clientside_callback("""(SwitchOn) => {
   SwitchOn
   ? document.documentElement.setAttribute('data-bs-theme', 'light')
@@ -330,41 +285,11 @@ Dividend, Option Type, and a Delete Button.
                       Output('color-mode-switch', 'id'),
                       Input('color-mode-switch', 'value'))
 #+end_src
-**** Tab Dark Mode
-#+begin_src python
-  @callback(Output({'type': 'tab'}, 'style'),
-            Input('color-mode-switch', 'value'))
-  def update_tabs_darkmode(switch_on):
-      patch = Patch()
-      patch_styles = Patch()
-
-      style = "border: 1px solid rgb(229,229,229); border-style: solid; border-radius: 0; border-width: 0px 0px 1px 0px;"
-      selected_style = 'border-top: 2px solid #2186f4; background-color: #ffffff; border: 1px solid rgb(229,229,229); color: #3f3f3f'
-      darkmode_style="border-bottom: 1px solid rgb(214, 214, 214); padding: 6px; font-weight: bold;"
-      darkmode_selected_style="border-top: 1px solid rgb(214, 214, 214); border-bottom: 1px solid rgb(214, 214, 214); background-color: rgb(17, 157, 255); color: white; padding: 6px;"
-
-
-      disabled_style = {'borderTop': '1px solid black', 'border': '1px solid green', 'color': 'blue'}
-      selected_style = {'borderTop': '2px solid blue', 'border': '1px solid black', 'color': 'green'}
-      darkmode_disabled_style = {'borderTop': '1px solid blue', 'border': '1px solid white', 'color': 'purple'}
-      darkmode_selected_style = {'borderTop': '2px solid green', 'border': '1px solid blue', 'color': 'black'}
-
-      if switch_on:
-          patch['props']['disabled_style'] = darkmode_disabled_style
-          patch['props']['selected_style'] = darkmode_selected_style
-          patch_styles = {'disabled_style': darkmode_disabled_style, 'selected_style': darkmode_selected_style}
-      else:
-          patch['props']['disabled_style'] = disabled_style
-          patch['props']['selected_style'] = selected_style
-          patch_styles = {'disabled_style': disabled_style, 'selected_style': selected_style}
-      return patch_styles
-#+end_src
 **** Plot Dark Mode
-For the moment it is excluded. I cant get the patch to work.
 #+begin_src python
   @callback(Output("price-graph", "figure", allow_duplicate=True),
-            Input("color-mode-switch", "value"),
-            prevent_initial_call='initial_duplicate')
+            Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value'),
+            prevent_initial_call=True)
   def update_figure_template(switch_on):
       template = pio.templates["minty"] if switch_on else pio.templates["minty_dark"]
       patch_figure = Patch()
