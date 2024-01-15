@@ -132,7 +132,7 @@ def options_calculator(price, strike, time, vol, rate, dividend, option_type):
     elif option_type.lower() == 'put':
         optionfn = options.Put().optionfn
     option_price = optionfn(price, strike, time, vol/100, rate/100, dividend/100)
-    logger.info(f'(price,strike,time,vol,rate,dividend,option_type)={}'.format((price, strike, time, vol, rate, dividend, option_type)))
+    logger.info('(price,strike,time,vol,rate,dividend,option_type)={}'.format((price, strike, time, vol, rate, dividend, option_type)))
     logger.info(f'Options price={option_price}')
     return f'{option_price:.3g}'
 
