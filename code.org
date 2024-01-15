@@ -373,7 +373,8 @@ For the moment it is excluded. I cant get the patch to work.
 #+end_src
 ** Dash Start
 #+begin_src python
-  app.run(debug=True, host='0.0.0.0')
+  if __name__ == '__main__':
+      app.run(debug=True, host='0.0.0.0')
 #+end_src
 * Options Class
 :PROPERTIES:
@@ -478,4 +479,13 @@ For the moment it is excluded. I cant get the patch to work.
           super(Option, self).__init__()
           self.args = args
 #+end_src
-
+* Main File
+:PROPERTIES:
+:header-args: :tangle ~/workspace/trading/plot/main.py
+:END:
+Everything is loaded and launched from this file.
+#+begin_src python
+  import plot
+  if __name__ == '__main__':
+      plot.app.run(host='0.0.0.0')
+#+end_src
