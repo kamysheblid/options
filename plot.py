@@ -125,14 +125,15 @@ def delete_option(n_clicks, value):
            Input({'type': 'dividend', 'index': MATCH}, 'value'),
            Input({'type': 'option-type', 'index': MATCH}, 'value')])
 def options_calculator(price, strike, time, vol, rate, dividend, option_type):
-    if not all([price, strike, time, vol, rate, dividend, option_type]):
+    if not all([price, strike, time, vol, rate, dividend]):
         return "Fill All Fields"
     if option_type.lower() == 'call':
         optionfn = options.Call().optionfn
     elif option_type.lower() == 'put':
         optionfn = options.Put().optionfn
     option_price = optionfn(price, strike, time, vol/100, rate/100, dividend/100)
-    logger.info(f'Calculating options price using ({vals}): {option_price}')
+    logger.info(f'(price,strike,time,vol,rate,dividend,option_type)={}'.format((price, strike, time, vol, rate, dividend, option_type)))
+    logger.info(f'Options price={option_price}')
     return f'{option_price:.3g}'
 
 def create_option_dataframe(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time):
