@@ -40,7 +40,8 @@ component_rate = dbc.Input(id='rate', type='number', placeholder="Rate", value=1
 component_dividend = dbc.Input(id='dividend', type='number', placeholder="Dividend", value=0.1, inputMode='numeric', debounce=True)
 component_option_type = dbc.RadioItems(id='option-type', options=['Put', 'Call'], value='Call', inline=False)
 
-component_graph = dcc.Graph(id="price-graph", responsive=True)
+component_option_price_plot = dcc.Graph(id="price-plot", responsive=True)
+component_option_delta_plot = dcc.Graph(id='delta-plot', responsive=True)
 
 options_container = dbc.Container(children=[
     dbc.Button("Add Option", id="add-option-btn", n_clicks=0),
@@ -61,10 +62,12 @@ tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
         dbc.Col(["Rate (%): ", component_rate]), 
         dbc.Col(["Dividend (%): ", component_dividend]),
         dbc.Col(["# of Time Components", component_time]),
-        dbc.Col([component_option_type], align='center')
+        dbc.Col([component_option_type], align='center'),
     ], justify='center', align='center'),
     html.P(),
-    dbc.Row(component_graph, justify='center', align='center')],
+    dbc.Row(children=[component_option_price_plot,
+                      component_option_delta_plot,
+                      ], justify='center', align='center')],
                   fluid=True)])
 
 tab_options = dbc.Tab(id='option-tab', label="Options Tab", children=[
@@ -92,7 +95,8 @@ def make_new_option(n_clicks):
             dbc.Input(id={'type': 'dividend', "index": n_clicks}, persistence=True, persistence_type='memory', type='number', inputmode='numeric', placeholder='Dividend (%)'),
             dbc.RadioItems(id={'type': 'option-type', 'index': n_clicks}, options=['Call', 'Put'], value='Call', inline=True),
         ], id={'type': 'option-form', 'index': n_clicks}),
-        dbc.Textarea(id={'type': 'text-area', 'index': n_clicks}, readOnly=True, rows=1),
+        dbc.Textarea(id={'type': 'option-price-text-area', 'index': n_clicks}, readOnly=True, rows=1),
+        dbc.Textarea(id={'type': 'greeks-text-area', 'index': n_clicks}, readOnly=True, rows=5),
         dbc.Button(children="Delete Child", id={'type': 'delete', 'index': n_clicks}, value=n_clicks, type='button', active=True, size='sm'),
         html.P(),
     #], id={'type': 'option-row', 'index': n_clicks}, align='start')
@@ -116,7 +120,8 @@ def delete_option(n_clicks, value):
     logger.info(f'Clicked delete on option #{value}')
     return None
 
-@callback(Output({'type': 'text-area', 'index': MATCH}, 'value'),
+@callback([Output({'type': 'option-price-text-area', 'index': MATCH}, 'value'),
+           Output({'type': 'greeks-text-area', 'index': MATCH}, 'value')],
           [Input({'type': 'price', 'index': MATCH}, 'value'),
            Input({'type': 'strike', 'index': MATCH}, 'value'),
            Input({'type': 'time', 'index': MATCH}, 'value'),
@@ -128,13 +133,17 @@ def options_calculator(price, strike, time, vol, rate, dividend, option_type):
     if not all([price, strike, time, vol, rate, dividend]):
         return "Fill All Fields"
     if option_type.lower() == 'call':
-        optionfn = options.Call().optionfn
+        option = options.Call()
     elif option_type.lower() == 'put':
-        optionfn = options.Put().optionfn
+        option = options.Put()
+    optionfn = option.optionfn
+    greeksfn = option.greeks
     option_price = optionfn(price, strike, time, vol/100, rate/100, dividend/100)
+    greeks = greeksfn(price, strike, time, vol/100, rate/100, dividend/100)
     logger.info('(price,strike,time,vol,rate,dividend,option_type)={}'.format((price, strike, time, vol, rate, dividend, option_type)))
     logger.info(f'Options price={option_price}')
-    return f'{option_price:.3g}'
+    logger.info(f'Greeks={greeks}')
+    return (f'{option_price:.3g}', f'{greeks}')
 
 def create_option_dataframe(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time):
     price = np.linspace(*price_range, 500)
@@ -146,7 +155,7 @@ def create_option_dataframe(price_range, strike, time_range, vol, rate, dividend
     df = pd.DataFrame({f"{time:d}d": optionfn(price, strike, time, vol/100, rate/100, dividend/100) for time in time_range}, index=price)
     return df
 
-@callback(Output("price-graph", "figure", allow_duplicate=True),
+@callback(Output("price-plot", "figure", allow_duplicate=True),
           [Input("price-range","value"),
            Input("strike-price","value"),
            Input("time-range","value"),
@@ -186,7 +195,7 @@ def update_price_rangeslider_min(child):
 def update_price_rangeslider_max(child):
     return [2*child[1]]
 
-@callback(Output("price-graph", "figure", allow_duplicate=True),
+@callback(Output("price-plot", "figure", allow_duplicate=True),
           Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value'),
           prevent_initial_call=True)
 def update_figure_template(switch_on):
