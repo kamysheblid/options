@@ -282,19 +282,6 @@ def render_plot(price_range, strike, time_range, vol, rate, dividend, option_typ
       return [2*child[1]]
 #+end_src
 *** Dark Mode Callbacks
-**** CANCELLED Whole Page Dark Mode
-CLOSED: [2024-01-15 Mon 21:36]
-May be unnecessary since theme changer handles everything
-#+begin_src python :tangle no
-  clientside_callback("""(SwitchOn) => {
-  SwitchOn
-  ? document.documentElement.setAttribute('data-bs-theme', 'light')
-  : document.documentElement.setAttribute('data-bs-theme', 'dark')
-  return window.dash_clientside.no_update
-  }""",
-                      Output('color-mode-switch', 'id'),
-                      Input('color-mode-switch', 'value'))
-#+end_src
 **** Plot Dark Mode
 #+begin_src python
   @callback(Output("price-plot", "figure", allow_duplicate=True),
