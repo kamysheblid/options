@@ -1,6 +1,6 @@
 import sympy
 from sympy import exp, oo, log, exp, sqrt, pi
-from sympy.abc import z,q,r,T,S,K,sigma,delta, gamma,rho,theta
+from sympy.abc import z,q,r,T,S,K,sigma,delta,gamma,rho,theta
 vega = sympy.symbols('vega')
 
 put = 'put'
@@ -50,6 +50,7 @@ class BlackSholes:
         self.vegafn = sympy.lambdify((S,K,T,sigma,r,q), self.vegaeq)
         self.rhofn = sympy.lambdify((S,K,T,sigma,r,q), self.rhoeq)
         return
+
     # def __eq__(self, other_option):
     #     if other_option and self and self.price == other_option.price and self.strike == other_option.strike and self.time == other_option.time and self.vol == other_option.vol and self.rate == other_option.rate and self.dividend == other_option.dividend and self.option_fn == other_option.option_fn:
     #         return True
