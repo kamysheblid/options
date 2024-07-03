@@ -1,4 +1,25 @@
-* Setup.py
+* Introduction
+:PROPERTIES:
+:arg-header: :tangle no
+:END:
+Options multi calculator and plotter.
+
+
+#+begin_src bash
+  python3 main.py -p 
+#+end_src
+
+** Requirements
+- pandas
+- numpy
+- sympy
+- requests
+- plotly
+- dash
+- dash_bootstrap_components
+- dash_bootstrap_templates
+* Code
+** Setup.py
 :PROPERTIES:
 :header-args: :tangle setup.py
 :END:
@@ -16,11 +37,10 @@
       license="Private"
       long_description=open('code.org').read()
 #+end_src
-* Poetry
+** Poetry
 :PROPERTIES:
 :arg-header: :tangle pyproject.toml
 :END:
-
 #+begin_src toml :tangle pyproject.toml
   [tool.poetry]
   name = "options calculator"
@@ -48,12 +68,12 @@
   # build-backend = "setuptools.build_meta"
 #+end_src
 Keep track of 
-* APIs
-** Binance API
+** APIs
+*** Binance API
 :PROPERTIES:
 :header-args: :tangle lib/binance.py
 :END:
-*** Imports
+**** Imports
 #+begin_src python
   """Author: Kamy
 
@@ -77,19 +97,20 @@ Keep track of
   import logging
   import requests
   import json
-  import time, datetime
+  import time
+  import datetime
   import numpy as np
   import pandas as pd
   import os
 #+end_src
-*** Logging
+**** Logging
 #+begin_src python
-  import icecream
-  from icecream import ic
-
-  def getTime():
-      return str(datetime.datetime.now())
-  ic.configureOutput(prefix=getTime, includeContext=True)
+  import importlib
+  if importlib.util.find_spec('icecream'):
+      from icecream import ic
+      ic.configureOutput(prefix=lambda: str(datetime.datetime.now()), includeContext=True)
+  else:
+      ic = print
 
   ## Logger Setup ##
   logger = logging.getLogger('binance-api')
@@ -102,7 +123,7 @@ Keep track of
       # "loggers": {...}
   }
 #+end_src
-*** Global Variables
+**** Global Variables
 #+begin_src python
   ## Global Variables ##
   PROXY = {'all': '0.0.0.0:2081'}
@@ -126,7 +147,7 @@ Keep track of
                '1M': datetime.timedelta(weeks=4)}
   SYMBOLS = None
 #+end_src
-*** Miscellaneous
+**** Miscellaneous
 #+begin_src python
   ## Miscellaneous ##
   def ping():
@@ -152,7 +173,7 @@ Keep track of
           raise Exception(f'Error: Symbol {symbol} not available')
       return True
 #+end_src
-*** Datetime Conversions and Checks
+**** Datetime Conversions and Checks
 #+begin_src python
   def date_to_epoch(date):
       '''Date is in this format: YY/MM/DD HH:MM
@@ -254,7 +275,7 @@ Keep track of
           raise Exception('Error: Dates are too far apart.')
       return True
 #+end_src
-*** Main Methods
+**** Main Methods
 #+begin_src python
   def get_klines(symbol='ETHUSDT', interval='1d',
                  startTime=(datetime.datetime.now()-DAY_DELTA),
@@ -342,7 +363,7 @@ Keep track of
                           columns=['Open', 'High', 'Low', 'Close',
                                    'Volume'], dtype=float)
 #+end_src
-*** Main
+**** Main
 #+begin_src python
   def main(symbol='ETHUSDT', interval='1d', startDate=datetime.datetime.now()-1000*INTERVALS['1d'] , endDate=datetime.datetime.now(), number_of_intervals=1000):
       ensure_interval(interval)
@@ -355,17 +376,20 @@ Keep track of
       import doctest
       doctest.testmod()
 #+end_src
-* Plot Python Script
+** TODO Dash Webpage
 :PROPERTIES:
 :header-args: :tangle plot.py
 :END:
-This script uses plotly to display information on options. The user
-enters some information on options like Strike, Time to Expiry, etc,
-and then it is plotted as well as some various Time and Prices.
-** Imports
+Uses plotly to display information on options. The user enters some
+information on options like Strike, Time to Expiry, etc, and then it
+is plotted.
+
+TODO:
+- Add multiple options to plotter
+- Add date interval calculator
+*** Imports
 #+begin_src python
   import numpy as np
-  import options
   import pandas as pd
   # Plotly and Dash Imports
   import plotly.express as px
@@ -374,8 +398,12 @@ and then it is plotted as well as some various Time and Prices.
   from dash import Dash, dcc, html, Input, Output, callback, Patch, ALL, MATCH
   import dash_bootstrap_components as dbc
   import dash_bootstrap_templates as dbt
+
+  # Import from local folder
+  import options
+  from lib import binance
 #+end_src
-** Logger Init
+*** Logger Init
 Prepare the logger for using throughout the program
 #+begin_src python  from icecream import ic
   import logging
@@ -392,21 +420,46 @@ Prepare the logger for using throughout the program
   # Add ch to logger
   logger.addHandler(ch)
 #+end_src
-** Dash Init
+*** Dash Init
 #+begin_src python
   fig = go.Figure()
   app = Dash(__name__, external_stylesheets=[dbc.themes.MINTY, dbc.icons.FONT_AWESOME], title="Options Pricing")
 #+end_src
-** Dash Components
-*** Dark Mode Components                                           :darkmode:
-**** Working Dark Mode
+*** Dash Components
+**** Dark Mode Components                                          :darkmode:
+***** Working Dark Mode
 #+begin_src python
   dbt.load_figure_template(['minty_dark', 'minty'])
 
   color_mode_switch = dbt.ThemeSwitchAIO(aio_id='theme', themes=[dbc.themes.MINTY, dbc.themes.CYBORG], switch_props={'persistence': True})
 #+end_src
-*** Plot Tab Components
-**** General Plot Components
+***** Dark Mode Callbacks
+****** CANCELLED Whole Page Dark Mode
+CLOSED: [2024-01-15 Mon 21:36]
+May be unnecessary since theme changer handles everything
+#+begin_src python :tangle no
+  clientside_callback("""(SwitchOn) => {
+  SwitchOn
+  ? document.documentElement.setAttribute('data-bs-theme', 'light')
+  : document.documentElement.setAttribute('data-bs-theme', 'dark')
+  return window.dash_clientside.no_update
+  }""",
+                      Output('color-mode-switch', 'id'),
+                      Input('color-mode-switch', 'value'))
+#+end_src
+****** Plot Dark Mode
+#+begin_src python
+  @callback(Output("price-graph", "figure", allow_duplicate=True),
+            Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value'),
+            prevent_initial_call=True)
+  def update_figure_template(switch_on):
+      template = pio.templates["minty"] if switch_on else pio.templates["minty_dark"]
+      patch_figure = Patch()
+      patch_figure["layout"]["template"] = template
+      return patch_figure
+#+end_src
+**** Plot Tab Components
+***** General Plot Components
 This might have to change. Place the time and price rangeslider to
 the Plot Tab and get rid of the rest of it.
 
@@ -427,11 +480,98 @@ rangeslider. All we would keep is those two and the graph.
 
   component_graph = dcc.Graph(id="price-graph", responsive=True)
 #+end_src
-*** ETHUSDT Tab Components
+***** Plot Tab Callbacks
+****** CANCELLED Plot Callbacks
+CLOSED: [2024-01-15 Mon 21:35]
+:PROPERTIES:
+:header-args: :tangle no
+:END:
+#+begin_src python
+  def create_option_dataframe(vals):
+      price = np.linspace(*vals[0], 500)
+      strike = vals[1]
+      time_range = np.linspace(*vals[2],int(vals[7]),dtype=int)
+      volatility = vals[3]/100
+      rate = vals[4]/100
+      dividend = vals[5]/100
+      option_type = vals[6]
+      if option_type.lower() == 'call':
+          optionfn = options.Call().optionfn
+      else:
+          optionfn = options.Put().optionfn
+      df = pd.DataFrame({f"{time:d}d": optionfn(price, strike, time, volatility, rate, dividend) for time in time_range}, index=price)
+      return df
+
+  @callback(Output("price-graph", "figure", allow_duplicate=True),
+            [Input("{}".format(_), "value") for _ in ['price-range', 'strike-price', 'time-range', 'volatility', 'rate', 'dividend', 'option-type', 'amount-time']],
+            prevent_initial_call='initial_duplicate')
+  def render_plot(*vals):
+      logger.info(f'render_plot input args: {vals}')
+      df = create_option_dataframe(vals)
+      fig = px.line(df, template="minty", labels='label')
+      hover_template = "<br>".join(["Asset Price: $%{x}", "Option Price: $%{y}"]) + "<extra></extra>"
+      fig.update_layout(yaxis={'type': 'log'}, xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", transition_duration=250)
+      fig.update_legends(title={'text':'Days to Expiry'})
+      return fig
+#+end_src
+****** New Plot Callbacks
+#+begin_src python
+def create_option_dataframe(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time):
+    price = np.linspace(*price_range, 500)
+    time_range = np.linspace(*time_range,int(amount_time),dtype=int)
+    if option_type.lower() == 'call':
+        optionfn = options.Call().optionfn
+    else:
+        optionfn = options.Put().optionfn
+    df = pd.DataFrame({f"{time:d}d": optionfn(price, strike, time, vol/100, rate/100, dividend/100) for time in time_range}, index=price)
+    return df
+
+@callback(Output("price-graph", "figure", allow_duplicate=True),
+          [Input("price-range","value"),
+           Input("strike-price","value"),
+           Input("time-range","value"),
+           Input("volatility","value"),
+           Input("rate","value"),
+           Input("dividend","value"),
+           Input("option-type","value"),
+           Input("amount-time","value"),
+           Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value')],
+          prevent_initial_call='initial_duplicate')
+def render_plot(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time, theme):
+    df = create_option_dataframe(price_range, strike, time_range, vol, rate,
+                                 dividend, option_type, amount_time)
+    fig = px.scatter(df, labels='label', template='minty' if theme else 'minty_dark')
+    hover_template = "<br>".join(["Asset Price: $%{x}", "Option Price: $%{y}"]) + "<extra></extra>"
+    fig.update_layout(xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", transition_duration=200)
+    fig.update_legends(title={'text':'Days to Expiry'})
+    return fig
+#+end_src
+****** Range Callbacks
+#+begin_src python
+  @callback([Output("time-range",'min'),
+             Input("time-range",'value')])
+  def update_time_rangeslider_min(child):
+      return [max(0.5*child[0], 1)]
+
+  @callback([Output("time-range",'max'),
+             Input("time-range",'value')])
+  def update_time_rangeslider_max(child):
+      return [2*child[1]]
+
+  @callback([Output("price-range",'min'),
+             Input("price-range",'value')])
+  def update_price_rangeslider_min(child):
+      return [max(0.5*child[0], 1)]
+
+  @callback([Output("price-range",'max'),
+             Input("price-range",'value')])
+  def update_price_rangeslider_max(child):
+      return [2*child[1]]
+#+end_src
+**** ETHUSDT Tab Components
 ETHUSDT candlestick plot. Gets an interval from user and displays
 plot. Callback is needed to switch between different intervals.
 #+begin_src python
-  import binance
   keys = {'1m':'1m', '1h':'1h', '4h':'4h', '1d':'1d', '1w':'1w', '1M':'1M'}
   ethusdt_interval_selector = dbc.RadioItems(id='ethusdt-interval-selector', inline=True,
                                              value='1d',
@@ -485,11 +625,10 @@ plot. Callback is needed to switch between different intervals.
       patch_figure["layout"]["template"] = template
       return patch_figure
 #+end_src
-*** BTCUSDT Tab Components
+**** BTCUSDT Tab Components
 BTCUSDT candlestick plot. Gets an interval from user and displays
 plot. Callback is needed to switch between different intervals.
 #+begin_src python
-  import binance
   keys = {'1m':'1m', '1h':'1h', '4h':'4h', '1d':'1d', '1w':'1w', '1M':'1M'}
   btcusdt_interval_selector = dbc.RadioItems(id='btcusdt-interval-selector', inline=True,
                                              value='1d',
@@ -530,7 +669,7 @@ plot. Callback is needed to switch between different intervals.
       patch_figure["layout"]["template"] = template
       return patch_figure
 #+end_src
-*** Option Tab Components
+**** Option Tab Components
 #+begin_src python
   options_container = dbc.Container(children=[
       dbc.Button("Add Option", id="add-option-btn", n_clicks=0),
@@ -538,48 +677,8 @@ plot. Callback is needed to switch between different intervals.
       html.Div(id='container-output-div'),
   ], fluid=True)
 #+end_src
-*** Dash Tabs Components
-Setting persistence on the tab keeps us in the correct tab we want.
-#+begin_src python 
-  tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
-      dbc.Container(children=[
-      html.P(),
-      dbc.Row([component_price_rangeslider], justify='center'),
-      html.P(),
-      dbc.Row([component_time_rangeslider], justify='center'),
-      html.P(),
-      dbc.Row([
-          dbc.Col(["Strike Price ($): ", component_strike_price]),
-          dbc.Col(["Volatility (%): ", component_volatility]), 
-          dbc.Col(["Rate (%): ", component_rate]), 
-          dbc.Col(["Dividend (%): ", component_dividend]),
-          dbc.Col(["# of Time Components", component_time]),
-          dbc.Col([component_option_type], align='center')
-      ], justify='center', align='center'),
-      html.P(),
-      dbc.Row(component_graph, justify='center', align='center')],
-                    fluid=True)])
-
-  tab_options = dbc.Tab(id='option-tab', label="Options Tab", children=[
-      options_container])
-
-  tabs = dbc.Tabs(id='tabs', children=[
-      tab_options,
-      tab_plot, tab_btcusdt, tab_ethusdt], persistence=True, persistence_type='memory')
-#+end_src
-*** App Layout
-This stores the layout for the entire application. The classname
-allows the theme changer to set it to dark mode or whatever other
-theme.
-#+begin_src python
-  app.layout = dbc.Container(children=[
-      dbc.Row(children=[color_mode_switch], justify='center'), 
-      tabs
-  ], fluid=True, className='m-4 dbc')
-#+end_src
-** Dash Callbacks
-*** Option Tab Callbacks
-**** TODO Add/Delete New Options Callback
+***** Option Tab Callbacks
+****** TODO Add/Delete New Options Callback
 An option row should have Price, Strike, Time, Volatility, Rate,
 Dividend, Option Type, and a Delete Button.
 
@@ -622,7 +721,7 @@ TODO: add some labeling using textbox labels in dbc or something.
       logger.info(f'Clicked delete on option #{value}')
       return None
 #+end_src
-**** Update Options Callback
+****** Update Options Callback
 #+begin_src python
   @callback(Output({'type': 'text-area', 'index': MATCH}, 'value'),
             [Input({'type': 'price', 'index': MATCH}, 'value'),
@@ -644,120 +743,46 @@ TODO: add some labeling using textbox labels in dbc or something.
       logger.info(f'Options price={option_price}')
       return f'{option_price:.3g}'
 #+end_src
-*** Plot Tab Callbacks
-**** CANCELLED Plot Callbacks
-CLOSED: [2024-01-15 Mon 21:35]
-:PROPERTIES:
-:header-args: :tangle no
-:END:
+**** Dash Tabs Components
+Setting persistence on the tab keeps us in the correct tab we want.
+#+begin_src python 
+  tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
+      dbc.Container(children=[
+      html.P(),
+      dbc.Row([component_price_rangeslider], justify='center'),
+      html.P(),
+      dbc.Row([component_time_rangeslider], justify='center'),
+      html.P(),
+      dbc.Row([
+          dbc.Col(["Strike Price ($): ", component_strike_price]),
+          dbc.Col(["Volatility (%): ", component_volatility]), 
+          dbc.Col(["Rate (%): ", component_rate]), 
+          dbc.Col(["Dividend (%): ", component_dividend]),
+          dbc.Col(["# of Time Components", component_time]),
+          dbc.Col([component_option_type], align='center')
+      ], justify='center', align='center'),
+      html.P(),
+      dbc.Row(component_graph, justify='center', align='center')],
+                    fluid=True)])
+
+  tab_options = dbc.Tab(id='option-tab', label="Options Tab", children=[
+      options_container])
+
+  tabs = dbc.Tabs(id='tabs', children=[
+      tab_options,
+      tab_plot, tab_btcusdt, tab_ethusdt], persistence=True, persistence_type='memory')
+#+end_src
+**** App Layout
+This stores the layout for the entire application. The classname
+allows the theme changer to set it to dark mode or whatever other
+theme.
 #+begin_src python
-  def create_option_dataframe(vals):
-      price = np.linspace(*vals[0], 500)
-      strike = vals[1]
-      time_range = np.linspace(*vals[2],int(vals[7]),dtype=int)
-      volatility = vals[3]/100
-      rate = vals[4]/100
-      dividend = vals[5]/100
-      option_type = vals[6]
-      if option_type.lower() == 'call':
-          optionfn = options.Call().optionfn
-      else:
-          optionfn = options.Put().optionfn
-      df = pd.DataFrame({f"{time:d}d": optionfn(price, strike, time, volatility, rate, dividend) for time in time_range}, index=price)
-      return df
-
-  @callback(Output("price-graph", "figure", allow_duplicate=True),
-            [Input("{}".format(_), "value") for _ in ['price-range', 'strike-price', 'time-range', 'volatility', 'rate', 'dividend', 'option-type', 'amount-time']],
-            prevent_initial_call='initial_duplicate')
-  def render_plot(*vals):
-      logger.info(f'render_plot input args: {vals}')
-      df = create_option_dataframe(vals)
-      fig = px.line(df, template="minty", labels='label')
-      hover_template = "<br>".join(["Asset Price: $%{x}", "Option Price: $%{y}"]) + "<extra></extra>"
-      fig.update_layout(yaxis={'type': 'log'}, xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", transition_duration=250)
-      fig.update_legends(title={'text':'Days to Expiry'})
-      return fig
+  app.layout = dbc.Container(children=[
+      dbc.Row(children=[color_mode_switch], justify='center'), 
+      tabs
+  ], fluid=True, className='m-4 dbc')
 #+end_src
-**** New Plot Callbacks
-#+begin_src python
-def create_option_dataframe(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time):
-    price = np.linspace(*price_range, 500)
-    time_range = np.linspace(*time_range,int(amount_time),dtype=int)
-    if option_type.lower() == 'call':
-        optionfn = options.Call().optionfn
-    else:
-        optionfn = options.Put().optionfn
-    df = pd.DataFrame({f"{time:d}d": optionfn(price, strike, time, vol/100, rate/100, dividend/100) for time in time_range}, index=price)
-    return df
-
-@callback(Output("price-graph", "figure", allow_duplicate=True),
-          [Input("price-range","value"),
-           Input("strike-price","value"),
-           Input("time-range","value"),
-           Input("volatility","value"),
-           Input("rate","value"),
-           Input("dividend","value"),
-           Input("option-type","value"),
-           Input("amount-time","value"),
-           Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value')],
-          prevent_initial_call='initial_duplicate')
-def render_plot(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time, theme):
-    df = create_option_dataframe(price_range, strike, time_range, vol, rate,
-                                 dividend, option_type, amount_time)
-    fig = px.scatter(df, labels='label', template='minty' if theme else 'minty_dark')
-    hover_template = "<br>".join(["Asset Price: $%{x}", "Option Price: $%{y}"]) + "<extra></extra>"
-    fig.update_layout(xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", transition_duration=200)
-    fig.update_legends(title={'text':'Days to Expiry'})
-    return fig
-#+end_src
-**** Range Callbacks
-#+begin_src python
-  @callback([Output("time-range",'min'),
-             Input("time-range",'value')])
-  def update_time_rangeslider_min(child):
-      return [max(0.5*child[0], 1)]
-
-  @callback([Output("time-range",'max'),
-             Input("time-range",'value')])
-  def update_time_rangeslider_max(child):
-      return [2*child[1]]
-
-  @callback([Output("price-range",'min'),
-             Input("price-range",'value')])
-  def update_price_rangeslider_min(child):
-      return [max(0.5*child[0], 1)]
-
-  @callback([Output("price-range",'max'),
-             Input("price-range",'value')])
-  def update_price_rangeslider_max(child):
-      return [2*child[1]]
-#+end_src
-*** Dark Mode Callbacks
-**** CANCELLED Whole Page Dark Mode
-CLOSED: [2024-01-15 Mon 21:36]
-May be unnecessary since theme changer handles everything
-#+begin_src python :tangle no
-  clientside_callback("""(SwitchOn) => {
-  SwitchOn
-  ? document.documentElement.setAttribute('data-bs-theme', 'light')
-  : document.documentElement.setAttribute('data-bs-theme', 'dark')
-  return window.dash_clientside.no_update
-  }""",
-                      Output('color-mode-switch', 'id'),
-                      Input('color-mode-switch', 'value'))
-#+end_src
-**** Plot Dark Mode
-#+begin_src python
-  @callback(Output("price-graph", "figure", allow_duplicate=True),
-            Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value'),
-            prevent_initial_call=True)
-  def update_figure_template(switch_on):
-      template = pio.templates["minty"] if switch_on else pio.templates["minty_dark"]
-      patch_figure = Patch()
-      patch_figure["layout"]["template"] = template
-      return patch_figure
-#+end_src
-** Dash Start
+*** Dash Start
 #+begin_src python
   def main(vals):
       component_price_rangeslider.value = vals.price_range
@@ -773,11 +798,11 @@ May be unnecessary since theme changer handles everything
   if __name__ == '__main__':
       app.run(debug=True, host='0.0.0.0')
 #+end_src
-* Options Class
+** Options Class
 :PROPERTIES:
 :header-args: :tangle options.py
 :END:
-** Initialization
+*** Initialization
 #+begin_src python
   import sympy
   from sympy import exp, oo, log, exp, sqrt, pi
@@ -787,7 +812,7 @@ May be unnecessary since theme changer handles everything
   put = 'put'
   call = 'call'
 #+end_src
-** Options and Greeks Definitions
+*** Options and Greeks Definitions
 #+begin_src python
   N = lambda x: (1/(2*pi)**0.5 * exp(-0.5*z**2)).integrate((z, -oo, x))
   d1 = (log(S/K) + (r - q + sigma**2 / 2) * (T/365)) / (sigma*(T/365)**0.5)
@@ -809,8 +834,8 @@ May be unnecessary since theme changer handles everything
   vegafn = sympy.lambdify((S,K,T,sigma,r,q), vegaeq)
   rhofn = sympy.lambdify((S,K,T,sigma,r,q), rhoeq)
 #+end_src
-** Objects
-*** Black Scholes Merton Class
+*** Objects
+**** Black Scholes Merton Class
 #+begin_src python
   class BlackSholes:
       """Option Class. Give it PRICE STRIKE TIME VOL RATE DIVIDEND and optionally OPTION_TYPE."""
@@ -855,7 +880,7 @@ May be unnecessary since theme changer handles everything
           # return f"<Option object Price={self.price} Strike={self.strike} Time={self.time} Vol={self.vol} Rate={self.rate} Dividend={self.dividend} Type={self.option_type} Option Price={self.option_price:.2f}>"
           return f"<Option object Type={self.option_type}>"
 #+end_src
-*** Call and Put Classes
+**** Call and Put Classes
 #+begin_src python
   class Put(BlackSholes):
       def __init__(self):
@@ -867,7 +892,7 @@ May be unnecessary since theme changer handles everything
           super(Call, self).__init__('call')
           return
 #+end_src
-*** Option Class
+**** Option Class
 #+begin_src python
   class Option(BlackSholes):
       """Documentation for Option
@@ -876,7 +901,7 @@ May be unnecessary since theme changer handles everything
           super(Option, self).__init__()
           self.args = args
 #+end_src
-* Main File
+** Main File
 :PROPERTIES:
 :header-args: :tangle main.py
 :END:
@@ -888,8 +913,8 @@ This also gets all the arguments that are passed to the program.
 
   parser = argparse.ArgumentParser()
   parser.add_argument('--price-range', '-p',nargs=2, default=[3000,5000], type=float, help='Price Range. def 3000 5000')
-  parser.add_argument('--time', '-t', type=int, default=90, help='Days to Expiry. Def 90')
   parser.add_argument('--strike', '-s', type=float, default=4500, help='Strike Price. Def 4500')
+  parser.add_argument('--time', '-t', type=int, default=90, help='Days to Expiry. Def 90')
   parser.add_argument('--volatility', '-V', type=float, default=75, help='Volatility as percentage. Def 75')
   parser.add_argument('--rate', '-r', type=float, default=5, help='Risk Free Rate as percentage. Def 5')
   parser.add_argument('--dividend', '-d', type=float, default=0.1, help='Dividend as percentage. Def 0.1')

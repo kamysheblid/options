@@ -1,5 +1,4 @@
 import numpy as np
-import options
 import pandas as pd
 # Plotly and Dash Imports
 import plotly.express as px
@@ -8,6 +7,10 @@ import plotly.io as pio
 from dash import Dash, dcc, html, Input, Output, callback, Patch, ALL, MATCH
 import dash_bootstrap_components as dbc
 import dash_bootstrap_templates as dbt
+
+# Import from local folder
+import options
+from lib import binance
 
 import logging
 # Create logger and set level
@@ -30,6 +33,15 @@ dbt.load_figure_template(['minty_dark', 'minty'])
 
 color_mode_switch = dbt.ThemeSwitchAIO(aio_id='theme', themes=[dbc.themes.MINTY, dbc.themes.CYBORG], switch_props={'persistence': True})
 
+@callback(Output("price-graph", "figure", allow_duplicate=True),
+          Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value'),
+          prevent_initial_call=True)
+def update_figure_template(switch_on):
+    template = pio.templates["minty"] if switch_on else pio.templates["minty_dark"]
+    patch_figure = Patch()
+    patch_figure["layout"]["template"] = template
+    return patch_figure
+
 component_price_rangeslider = dcc.RangeSlider(min=1, max=5000, count=1, value=[2000,3500], id='price-range', tooltip={'placement':'bottom', 'always_visible':True})
 component_time_rangeslider = dcc.RangeSlider(min=1, max=100, count=1, value=[1,90], id='time-range', tooltip={'placement':'bottom', 'always_visible':True})
 
@@ -42,7 +54,56 @@ component_option_type = dbc.RadioItems(id='option-type', options=['Put', 'Call']
 
 component_graph = dcc.Graph(id="price-graph", responsive=True)
 
-import binance
+def create_option_dataframe(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time):
+    price = np.linspace(*price_range, 500)
+    time_range = np.linspace(*time_range,int(amount_time),dtype=int)
+    if option_type.lower() == 'call':
+        optionfn = options.Call().optionfn
+    else:
+        optionfn = options.Put().optionfn
+    df = pd.DataFrame({f"{time:d}d": optionfn(price, strike, time, vol/100, rate/100, dividend/100) for time in time_range}, index=price)
+    return df
+
+@callback(Output("price-graph", "figure", allow_duplicate=True),
+          [Input("price-range","value"),
+           Input("strike-price","value"),
+           Input("time-range","value"),
+           Input("volatility","value"),
+           Input("rate","value"),
+           Input("dividend","value"),
+           Input("option-type","value"),
+           Input("amount-time","value"),
+           Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value')],
+          prevent_initial_call='initial_duplicate')
+def render_plot(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time, theme):
+    df = create_option_dataframe(price_range, strike, time_range, vol, rate,
+                                 dividend, option_type, amount_time)
+    fig = px.scatter(df, labels='label', template='minty' if theme else 'minty_dark')
+    hover_template = "<br>".join(["Asset Price: $%{x}", "Option Price: $%{y}"]) + "<extra></extra>"
+    fig.update_layout(xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", transition_duration=200)
+    fig.update_legends(title={'text':'Days to Expiry'})
+    return fig
+
+@callback([Output("time-range",'min'),
+           Input("time-range",'value')])
+def update_time_rangeslider_min(child):
+    return [max(0.5*child[0], 1)]
+
+@callback([Output("time-range",'max'),
+           Input("time-range",'value')])
+def update_time_rangeslider_max(child):
+    return [2*child[1]]
+
+@callback([Output("price-range",'min'),
+           Input("price-range",'value')])
+def update_price_rangeslider_min(child):
+    return [max(0.5*child[0], 1)]
+
+@callback([Output("price-range",'max'),
+           Input("price-range",'value')])
+def update_price_rangeslider_max(child):
+    return [2*child[1]]
+
 keys = {'1m':'1m', '1h':'1h', '4h':'4h', '1d':'1d', '1w':'1w', '1M':'1M'}
 ethusdt_interval_selector = dbc.RadioItems(id='ethusdt-interval-selector', inline=True,
                                            value='1d',
@@ -96,7 +157,6 @@ def update_figure_template(switch_on):
     patch_figure["layout"]["template"] = template
     return patch_figure
 
-import binance
 keys = {'1m':'1m', '1h':'1h', '4h':'4h', '1d':'1d', '1w':'1w', '1M':'1M'}
 btcusdt_interval_selector = dbc.RadioItems(id='btcusdt-interval-selector', inline=True,
                                            value='1d',
@@ -142,37 +202,6 @@ options_container = dbc.Container(children=[
     html.Div(id='container-div', children=[]),
     html.Div(id='container-output-div'),
 ], fluid=True)
-
-tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
-    dbc.Container(children=[
-    html.P(),
-    dbc.Row([component_price_rangeslider], justify='center'),
-    html.P(),
-    dbc.Row([component_time_rangeslider], justify='center'),
-    html.P(),
-    dbc.Row([
-        dbc.Col(["Strike Price ($): ", component_strike_price]),
-        dbc.Col(["Volatility (%): ", component_volatility]), 
-        dbc.Col(["Rate (%): ", component_rate]), 
-        dbc.Col(["Dividend (%): ", component_dividend]),
-        dbc.Col(["# of Time Components", component_time]),
-        dbc.Col([component_option_type], align='center')
-    ], justify='center', align='center'),
-    html.P(),
-    dbc.Row(component_graph, justify='center', align='center')],
-                  fluid=True)])
-
-tab_options = dbc.Tab(id='option-tab', label="Options Tab", children=[
-    options_container])
-
-tabs = dbc.Tabs(id='tabs', children=[
-    tab_options,
-    tab_plot, tab_btcusdt, tab_ethusdt], persistence=True, persistence_type='memory')
-
-app.layout = dbc.Container(children=[
-    dbc.Row(children=[color_mode_switch], justify='center'), 
-    tabs
-], fluid=True, className='m-4 dbc')
 
 def make_new_option(n_clicks):
     logger.info(f'Making new option index={n_clicks}')
@@ -231,64 +260,36 @@ def options_calculator(price, strike, time, vol, rate, dividend, option_type):
     logger.info(f'Options price={option_price}')
     return f'{option_price:.3g}'
 
-def create_option_dataframe(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time):
-    price = np.linspace(*price_range, 500)
-    time_range = np.linspace(*time_range,int(amount_time),dtype=int)
-    if option_type.lower() == 'call':
-        optionfn = options.Call().optionfn
-    else:
-        optionfn = options.Put().optionfn
-    df = pd.DataFrame({f"{time:d}d": optionfn(price, strike, time, vol/100, rate/100, dividend/100) for time in time_range}, index=price)
-    return df
+tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
+    dbc.Container(children=[
+    html.P(),
+    dbc.Row([component_price_rangeslider], justify='center'),
+    html.P(),
+    dbc.Row([component_time_rangeslider], justify='center'),
+    html.P(),
+    dbc.Row([
+        dbc.Col(["Strike Price ($): ", component_strike_price]),
+        dbc.Col(["Volatility (%): ", component_volatility]), 
+        dbc.Col(["Rate (%): ", component_rate]), 
+        dbc.Col(["Dividend (%): ", component_dividend]),
+        dbc.Col(["# of Time Components", component_time]),
+        dbc.Col([component_option_type], align='center')
+    ], justify='center', align='center'),
+    html.P(),
+    dbc.Row(component_graph, justify='center', align='center')],
+                  fluid=True)])
 
-@callback(Output("price-graph", "figure", allow_duplicate=True),
-          [Input("price-range","value"),
-           Input("strike-price","value"),
-           Input("time-range","value"),
-           Input("volatility","value"),
-           Input("rate","value"),
-           Input("dividend","value"),
-           Input("option-type","value"),
-           Input("amount-time","value"),
-           Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value')],
-          prevent_initial_call='initial_duplicate')
-def render_plot(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time, theme):
-    df = create_option_dataframe(price_range, strike, time_range, vol, rate,
-                                 dividend, option_type, amount_time)
-    fig = px.scatter(df, labels='label', template='minty' if theme else 'minty_dark')
-    hover_template = "<br>".join(["Asset Price: $%{x}", "Option Price: $%{y}"]) + "<extra></extra>"
-    fig.update_layout(xaxis_title="Asset Price ($)", yaxis_title="Option Price ($)", transition_duration=200)
-    fig.update_legends(title={'text':'Days to Expiry'})
-    return fig
+tab_options = dbc.Tab(id='option-tab', label="Options Tab", children=[
+    options_container])
 
-@callback([Output("time-range",'min'),
-           Input("time-range",'value')])
-def update_time_rangeslider_min(child):
-    return [max(0.5*child[0], 1)]
+tabs = dbc.Tabs(id='tabs', children=[
+    tab_options,
+    tab_plot, tab_btcusdt, tab_ethusdt], persistence=True, persistence_type='memory')
 
-@callback([Output("time-range",'max'),
-           Input("time-range",'value')])
-def update_time_rangeslider_max(child):
-    return [2*child[1]]
-
-@callback([Output("price-range",'min'),
-           Input("price-range",'value')])
-def update_price_rangeslider_min(child):
-    return [max(0.5*child[0], 1)]
-
-@callback([Output("price-range",'max'),
-           Input("price-range",'value')])
-def update_price_rangeslider_max(child):
-    return [2*child[1]]
-
-@callback(Output("price-graph", "figure", allow_duplicate=True),
-          Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value'),
-          prevent_initial_call=True)
-def update_figure_template(switch_on):
-    template = pio.templates["minty"] if switch_on else pio.templates["minty_dark"]
-    patch_figure = Patch()
-    patch_figure["layout"]["template"] = template
-    return patch_figure
+app.layout = dbc.Container(children=[
+    dbc.Row(children=[color_mode_switch], justify='center'), 
+    tabs
+], fluid=True, className='m-4 dbc')
 
 def main(vals):
     component_price_rangeslider.value = vals.price_range

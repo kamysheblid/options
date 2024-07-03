@@ -20,17 +20,18 @@ environment proxies.
 import logging
 import requests
 import json
-import time, datetime
+import time
+import datetime
 import numpy as np
 import pandas as pd
 import os
 
-import icecream
-from icecream import ic
-
-def getTime():
-    return str(datetime.datetime.now())
-ic.configureOutput(prefix=getTime, includeContext=True)
+import importlib
+if importlib.util.find_spec('icecream'):
+    from icecream import ic
+    ic.configureOutput(prefix=lambda: str(datetime.datetime.now()), includeContext=True)
+else:
+    ic = print
 
 ## Logger Setup ##
 logger = logging.getLogger('binance-api')
