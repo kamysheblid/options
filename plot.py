@@ -289,7 +289,7 @@ tabs = dbc.Tabs(id='tabs', children=[
 app.layout = dbc.Container(children=[
     dbc.Row(children=[color_mode_switch], justify='center'), 
     tabs
-], fluid=True, className='m-4 dbc')
+], fluid=False, className='m-4 dbc')
 
 def main(vals):
     component_price_rangeslider.value = vals.price_range

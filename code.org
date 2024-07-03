@@ -412,7 +412,7 @@ TODO:
   import options
   from lib import binance
 #+end_src
-*** Logger Init
+*** Logger
 Prepare the logger for using throughout the program
 #+begin_src python  from icecream import ic
   import logging
@@ -429,12 +429,12 @@ Prepare the logger for using throughout the program
   # Add ch to logger
   logger.addHandler(ch)
 #+end_src
-*** Dash Init
+*** Init
 #+begin_src python
   fig = go.Figure()
   app = Dash(__name__, external_stylesheets=[dbc.themes.MINTY, dbc.icons.FONT_AWESOME], title="Options Pricing")
 #+end_src
-*** Dash Components
+*** Components
 **** Dark Mode Components                                          :darkmode:
 ***** Working Dark Mode
 #+begin_src python
@@ -789,9 +789,9 @@ theme.
   app.layout = dbc.Container(children=[
       dbc.Row(children=[color_mode_switch], justify='center'), 
       tabs
-  ], fluid=True, className='m-4 dbc')
+  ], fluid=False, className='m-4 dbc')
 #+end_src
-*** Dash Start
+*** Start Program
 #+begin_src python
   def main(vals):
       component_price_rangeslider.value = vals.price_range
