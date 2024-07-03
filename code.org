@@ -14,13 +14,13 @@ and then it is plotted as well as some various Time and Prices.
   import plotly.express as px
   import plotly.graph_objects as go
   import plotly.io as pio
-  from dash import Dash, dcc, html, Input, Output, callback, Patch, clientside_callback, ALL, MATCH
+  from dash import Dash, dcc, html, Input, Output, callback, Patch, ALL, MATCH
   import dash_bootstrap_components as dbc
   import dash_bootstrap_templates as dbt
 #+end_src
 ** Logger Init
 Prepare the logger for using throughout the program
-#+begin_src python
+#+begin_src python  from icecream import ic
   import logging
   # Create logger and set level
   logger = logging.getLogger(__name__)
@@ -81,7 +81,7 @@ rangeslider. All we would keep is those two and the graph.
 #+end_src
 *** Dash Tabs Components
 Setting persistence on the tab keeps us in the correct tab we want.
-#+begin_src python
+#+begin_src python 
   tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
       dbc.Container(children=[
       html.P(),
@@ -295,24 +295,35 @@ def render_plot(price_range, strike, time_range, vol, rate, dividend, option_typ
 #+end_src
 ** Dash Start
 #+begin_src python
+  def main(vals):
+      component_price_rangeslider.value = vals.price_range
+      component_time_rangeslider.max = vals.time
+      component_strike_price.value = vals.strike
+      component_volatility.value = vals.volatility
+      component_rate.value = vals.rate
+      component_dividend.value = vals.dividend
+      component_option_type.value = 'Call' if vals.option_type == 'c' else 'Put'
+      app.run(debug=vals.debug_mode, host='0.0.0.0', port=vals.server_port )
+      return None
+
   if __name__ == '__main__':
       app.run(debug=True, host='0.0.0.0')
 #+end_src
 * Options Class
 :PROPERTIES:
-:header-args: :tangle ~/workspace/trading/plot/options.py
+:header-args: :tangle options.py
 :END:
-** Imports
+** Initialization
 #+begin_src python
   import sympy
   from sympy import exp, oo, log, exp, sqrt, pi
-  from sympy.abc import z,q,r,T,S,K,sigma,delta, gamma,rho,theta
+  from sympy.abc import z,q,r,T,S,K,sigma,delta,gamma,rho,theta
   vega = sympy.symbols('vega')
 
   put = 'put'
   call = 'call'
 #+end_src
-** Options and Greeks Equations and Functions
+** Options and Greeks Definitions
 #+begin_src python
   N = lambda x: (1/(2*pi)**0.5 * exp(-0.5*z**2)).integrate((z, -oo, x))
   d1 = (log(S/K) + (r - q + sigma**2 / 2) * (T/365)) / (sigma*(T/365)**0.5)
@@ -334,7 +345,7 @@ def render_plot(price_range, strike, time_range, vol, rate, dividend, option_typ
   vegafn = sympy.lambdify((S,K,T,sigma,r,q), vegaeq)
   rhofn = sympy.lambdify((S,K,T,sigma,r,q), rhoeq)
 #+end_src
-** Classes
+** Objects
 *** Black Scholes Merton Class
 #+begin_src python
   class BlackSholes:
@@ -361,6 +372,7 @@ def render_plot(price_range, strike, time_range, vol, rate, dividend, option_typ
           self.vegafn = sympy.lambdify((S,K,T,sigma,r,q), self.vegaeq)
           self.rhofn = sympy.lambdify((S,K,T,sigma,r,q), self.rhoeq)
           return
+
       # def __eq__(self, other_option):
       #     if other_option and self and self.price == other_option.price and self.strike == other_option.strike and self.time == other_option.time and self.vol == other_option.vol and self.rate == other_option.rate and self.dividend == other_option.dividend and self.option_fn == other_option.option_fn:
       #         return True
@@ -378,7 +390,6 @@ def render_plot(price_range, strike, time_range, vol, rate, dividend, option_typ
           # return f"<Option object Price={self.price} Strike={self.strike} Time={self.time} Vol={self.vol} Rate={self.rate} Dividend={self.dividend} Type={self.option_type} Option Price={self.option_price:.2f} Greeks={greeks_str}>"
           # return f"<Option object Price={self.price} Strike={self.strike} Time={self.time} Vol={self.vol} Rate={self.rate} Dividend={self.dividend} Type={self.option_type} Option Price={self.option_price:.2f}>"
           return f"<Option object Type={self.option_type}>"
-
 #+end_src
 *** Call and Put Classes
 #+begin_src python
