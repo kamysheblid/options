@@ -6,7 +6,16 @@ Options multi calculator and plotter.
 
 
 #+begin_src bash
-  python3 main.py -p 
+  python3 main.py \
+  	--price-range 3000 4000 \
+  	--strike 4000 \
+  	--time 270 \
+  	--volatility 70 \
+  	--rate 0 \
+  	--dividend 0 \
+  	--option-type c \
+  	--server-port 8050 \
+  	--proxy 0.0.0.0:2081
 #+end_src
 
 ** Requirements
