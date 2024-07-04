@@ -581,7 +581,6 @@ def render_plot(price_range, strike, time_range, vol, rate, dividend, option_typ
 ETHUSDT candlestick plot. Gets an interval from user and displays
 plot. Callback is needed to switch between different intervals.
 #+begin_src python
-  keys = {'1m':'1m', '1h':'1h', '4h':'4h', '1d':'1d', '1w':'1w', '1M':'1M'}
   ethusdt_interval_selector = dbc.RadioItems(id='ethusdt-interval-selector', inline=True,
                                              value='1d',
                                              options=['1m', '1h', '4h', '1d', '1w', '1M'])
@@ -638,7 +637,6 @@ plot. Callback is needed to switch between different intervals.
 BTCUSDT candlestick plot. Gets an interval from user and displays
 plot. Callback is needed to switch between different intervals.
 #+begin_src python
-  keys = {'1m':'1m', '1h':'1h', '4h':'4h', '1d':'1d', '1w':'1w', '1M':'1M'}
   btcusdt_interval_selector = dbc.RadioItems(id='btcusdt-interval-selector', inline=True,
                                              value='1d',
                                              options=['1m', '1h', '4h', '1d', '1w', '1M'])
