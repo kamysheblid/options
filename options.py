@@ -37,6 +37,7 @@ class BlackSholes:
             self.option_type = call
             self.optioneq = calleq
             self.optionfn = callfn
+        self.variables = (S, K, T, sigma, r, q)
 
         self.deltaeq = sympy.diff(self.optioneq, S)
         self.gammaeq = sympy.diff(self.deltaeq, S)

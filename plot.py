@@ -104,7 +104,6 @@ def update_price_rangeslider_min(child):
 def update_price_rangeslider_max(child):
     return [2*child[1]]
 
-keys = {'1m':'1m', '1h':'1h', '4h':'4h', '1d':'1d', '1w':'1w', '1M':'1M'}
 ethusdt_interval_selector = dbc.RadioItems(id='ethusdt-interval-selector', inline=True,
                                            value='1d',
                                            options=['1m', '1h', '4h', '1d', '1w', '1M'])
@@ -157,7 +156,6 @@ def update_figure_template(switch_on):
     patch_figure["layout"]["template"] = template
     return patch_figure
 
-keys = {'1m':'1m', '1h':'1h', '4h':'4h', '1d':'1d', '1w':'1w', '1M':'1M'}
 btcusdt_interval_selector = dbc.RadioItems(id='btcusdt-interval-selector', inline=True,
                                            value='1d',
                                            options=['1m', '1h', '4h', '1d', '1w', '1M'])
@@ -196,6 +194,8 @@ def update_figure_template(switch_on):
     patch_figure = Patch()
     patch_figure["layout"]["template"] = template
     return patch_figure
+
+dates_calculator = dbc.Container()
 
 options_container = dbc.Container(children=[
     dbc.Button("Add Option", id="add-option-btn", n_clicks=0),
@@ -249,16 +249,26 @@ def delete_option(n_clicks, value):
            Input({'type': 'dividend', 'index': MATCH}, 'value'),
            Input({'type': 'option-type', 'index': MATCH}, 'value')])
 def options_calculator(price, strike, time, vol, rate, dividend, option_type):
+
     if not all([price, strike, time, vol, rate, dividend]):
         return "Fill All Fields"
     if option_type.lower() == 'call':
-        optionfn = options.Call().optionfn
+        option = options.Call()
     elif option_type.lower() == 'put':
-        optionfn = options.Put().optionfn
-    option_price = optionfn(price, strike, time, vol/100, rate/100, dividend/100)
+        option = options.Put()
+
+    normalized_parameters = (price, strike, time, vol/100, rate/100, dividend/100)
+    option_price = option.optionfn(*normalized_parameters)
+    greeks = option.greeks(*normalized_parameters)
+    delta, gamma, theta, vega, rho = greeks.values()
+    leverage = price*delta/option_price
+
     logger.info('(price,strike,time,vol,rate,dividend,option_type)={}'.format((price, strike, time, vol, rate, dividend, option_type)))
+    logger.info(f'(price,strike,time,vol,rate,dividend,option_type)={normalized_parameters}')
     logger.info(f'Options price={option_price}')
-    return f'{option_price:.3g}'
+    logger.info(f'Greeks: {greeks}')
+
+    return f'{option_price:.3g}; Δ: {100*delta:.1f}; γ: {10000*gamma:.2f}; θ: {theta:.2f}; ν: {vega:.1f}; ρ: {rho:0.1f}; leverage = {leverage:.1f}x'
 
 tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
     dbc.Container(children=[
@@ -312,4 +322,5 @@ if __name__ == '__main__':
                      option_type='c',
                      server_port='0.0.0.0',
                      debug_mode=True)
+    
     main(args)
