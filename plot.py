@@ -7,6 +7,7 @@ import plotly.io as pio
 from dash import Dash, dcc, html, Input, Output, callback, Patch, ALL, MATCH
 import dash_bootstrap_components as dbc
 import dash_bootstrap_templates as dbt
+import datetime
 
 # Import from local folder
 import options
@@ -214,13 +215,46 @@ def update_figure_template(switch_on):
     patch_figure["layout"]["template"] = template
     return patch_figure
 
-dates_calculator = dbc.Container()
+component_date_picker_1 = dcc.DatePickerSingle(id='date-picker-1',
+                                               #month_format='MM/YYYY',
+                                               display_format='DD/MM/YYYY',
+                                               clearable=True,
+                                               persistence=True,
+                                               date=datetime.date.today())
+component_date_picker_2 = dcc.DatePickerSingle(id='date-picker-2',
+                                               #month_format='DD/MM/YYYY',
+                                               display_format='DD/MM/YYYY',
+                                               clearable=True,
+                                               persistence=True,
+                                               date=datetime.date.today())
+component_num_of_days = html.Div(id='number-of-days')
+
+days_calc_container = dbc.Container(children=[html.H4('Dates Calculator'),
+                                              html.Div(component_date_picker_1),
+                                              html.P(),
+                                              html.Div(component_date_picker_2),
+                                              component_num_of_days])
+tab_days_calc = dbc.Tab(id='dates-calc-tab', label='Days Calculator',
+                        children=[days_calc_container])
+
+@callback(output=Output('number-of-days', 'children'),
+          inputs=[Input('date-picker-1', 'date'),
+                  Input('date-picker-2', 'date')])
+def calculate_days_interval(date_str_1, date_str_2):
+  if (not date_str_1) or (not date_str_2):
+    return 'Choose Dates'
+  date1 = datetime.date.fromisoformat(date_str_1)
+  date2 = datetime.date.fromisoformat(date_str_2)
+  return f'{abs(date1-date2).days} days'
 
 options_container = dbc.Container(children=[
     dbc.Button("Add Option", id="add-option-btn", n_clicks=0),
     html.Div(id='container-div', children=[]),
     html.Div(id='container-output-div'),
 ], fluid=True)
+
+tab_options = dbc.Tab(id='option-tab', label="Options Tab", children=[
+    options_container])
 
 def make_new_option(n_clicks):
     logger.info(f'Making new option index={n_clicks}')

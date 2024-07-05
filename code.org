@@ -407,6 +407,7 @@ TODO:
   from dash import Dash, dcc, html, Input, Output, callback, Patch, ALL, MATCH
   import dash_bootstrap_components as dbc
   import dash_bootstrap_templates as dbt
+  import datetime
 
   # Import from local folder
   import options
@@ -695,14 +696,45 @@ plot. Callback is needed to switch between different intervals.
       patch_figure["layout"]["template"] = template
       return patch_figure
 #+end_src
-**** Date Calc Components
+**** Date Calculator
 Calculate the following:
-1. Days between two dates
-2. Given initial date and number of days, find final date
-3. Given final date and num of days, find initial date
-
+1) +Days between two dates+ (Completed)
+2) Given date and (positive or negative) number of days, find final date
+***** Date Calc Components
 #+begin_src python
-  dates_calculator = dbc.Container()
+  component_date_picker_1 = dcc.DatePickerSingle(id='date-picker-1',
+                                                 #month_format='MM/YYYY',
+                                                 display_format='DD/MM/YYYY',
+                                                 clearable=True,
+                                                 persistence=True,
+                                                 date=datetime.date.today())
+  component_date_picker_2 = dcc.DatePickerSingle(id='date-picker-2',
+                                                 #month_format='DD/MM/YYYY',
+                                                 display_format='DD/MM/YYYY',
+                                                 clearable=True,
+                                                 persistence=True,
+                                                 date=datetime.date.today())
+  component_num_of_days = html.Div(id='number-of-days')
+
+  days_calc_container = dbc.Container(children=[html.H4('Dates Calculator'),
+                                                html.Div(component_date_picker_1),
+                                                html.P(),
+                                                html.Div(component_date_picker_2),
+                                                component_num_of_days])
+  tab_days_calc = dbc.Tab(id='dates-calc-tab', label='Days Calculator',
+                          children=[days_calc_container])
+#+end_src
+***** Date Calc Callbacks
+#+begin_src python
+  @callback(output=Output('number-of-days', 'children'),
+            inputs=[Input('date-picker-1', 'date'),
+                    Input('date-picker-2', 'date')])
+  def calculate_days_interval(date_str_1, date_str_2):
+    if (not date_str_1) or (not date_str_2):
+      return 'Choose Dates'
+    date1 = datetime.date.fromisoformat(date_str_1)
+    date2 = datetime.date.fromisoformat(date_str_2)
+    return f'{abs(date1-date2).days} days'
 #+end_src
 **** Option Tab Components
 #+begin_src python
@@ -711,6 +743,9 @@ Calculate the following:
       html.Div(id='container-div', children=[]),
       html.Div(id='container-output-div'),
   ], fluid=True)
+
+  tab_options = dbc.Tab(id='option-tab', label="Options Tab", children=[
+      options_container])
 #+end_src
 ***** Option Tab Callbacks
 ****** TODO Add/Delete New Options Callback
