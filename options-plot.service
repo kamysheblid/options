@@ -1,0 +1,7 @@
+[Unit]
+Description=Launch the options plotting and calculations server
+
+[Service]
+type=simple
+Environment='PRICE_RANGE=3000 4000' 'STRIKE=4000' 'DAYS=300' 'VOL=70' 'RATE=5' 'DIV=1' 'TYPE=call' 'PROXY=192.168.1.10:2081'
+ExecStart=+$HOME/.pyenv/bin/pyenv exec python $HOME/workspace/options/main.py --price-range $PRICE_RANGE --strike $STRIKE --time $DAYS --volatility $VOL --rate $RATE --dividend $DIV --option_type $TYPE
