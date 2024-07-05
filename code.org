@@ -488,6 +488,25 @@ rangeslider. All we would keep is those two and the graph.
   component_option_type = dbc.RadioItems(id='option-type', options=['Put', 'Call'], value='Call', inline=False)
 
   component_graph = dcc.Graph(id="price-graph", responsive=True)
+
+  tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
+      dbc.Container(children=[
+      html.P(),
+      dbc.Row([component_price_rangeslider], justify='center'),
+      html.P(),
+      dbc.Row([component_time_rangeslider], justify='center'),
+      html.P(),
+      dbc.Row([
+          dbc.Col(["Strike Price ($): ", component_strike_price]),
+          dbc.Col(["Volatility (%): ", component_volatility]), 
+          dbc.Col(["Rate (%): ", component_rate]), 
+          dbc.Col(["Dividend (%): ", component_dividend]),
+          dbc.Col(["# of Time Components", component_time]),
+          dbc.Col([component_option_type], align='center')
+      ], justify='center', align='center'),
+      html.P(),
+      dbc.Row(component_graph, justify='center', align='center')],
+                    fluid=True)])
 #+end_src
 ***** Plot Tab Callbacks
 ****** CANCELLED Plot Callbacks
@@ -772,31 +791,9 @@ TODO: add some labeling using textbox labels in dbc or something.
 **** Dash Tabs Components
 Setting persistence on the tab keeps us in the correct tab we want.
 #+begin_src python 
-  tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
-      dbc.Container(children=[
-      html.P(),
-      dbc.Row([component_price_rangeslider], justify='center'),
-      html.P(),
-      dbc.Row([component_time_rangeslider], justify='center'),
-      html.P(),
-      dbc.Row([
-          dbc.Col(["Strike Price ($): ", component_strike_price]),
-          dbc.Col(["Volatility (%): ", component_volatility]), 
-          dbc.Col(["Rate (%): ", component_rate]), 
-          dbc.Col(["Dividend (%): ", component_dividend]),
-          dbc.Col(["# of Time Components", component_time]),
-          dbc.Col([component_option_type], align='center')
-      ], justify='center', align='center'),
-      html.P(),
-      dbc.Row(component_graph, justify='center', align='center')],
-                    fluid=True)])
-
-  tab_options = dbc.Tab(id='option-tab', label="Options Tab", children=[
-      options_container])
-
   tabs = dbc.Tabs(id='tabs', children=[
       tab_options,
-      tab_plot, tab_btcusdt, tab_ethusdt], persistence=True, persistence_type='memory')
+      tab_plot, tab_btcusdt, tab_ethusdt, tab_days_calc], persistence=True, persistence_type='memory')
 #+end_src
 **** App Layout
 This stores the layout for the entire application. The classname

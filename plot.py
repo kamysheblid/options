@@ -54,6 +54,25 @@ component_option_type = dbc.RadioItems(id='option-type', options=['Put', 'Call']
 
 component_graph = dcc.Graph(id="price-graph", responsive=True)
 
+tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
+    dbc.Container(children=[
+    html.P(),
+    dbc.Row([component_price_rangeslider], justify='center'),
+    html.P(),
+    dbc.Row([component_time_rangeslider], justify='center'),
+    html.P(),
+    dbc.Row([
+        dbc.Col(["Strike Price ($): ", component_strike_price]),
+        dbc.Col(["Volatility (%): ", component_volatility]), 
+        dbc.Col(["Rate (%): ", component_rate]), 
+        dbc.Col(["Dividend (%): ", component_dividend]),
+        dbc.Col(["# of Time Components", component_time]),
+        dbc.Col([component_option_type], align='center')
+    ], justify='center', align='center'),
+    html.P(),
+    dbc.Row(component_graph, justify='center', align='center')],
+                  fluid=True)])
+
 def create_option_dataframe(price_range, strike, time_range, vol, rate, dividend, option_type, amount_time):
     price = np.linspace(*price_range, 500)
     time_range = np.linspace(*time_range,int(amount_time),dtype=int)
@@ -270,31 +289,9 @@ def options_calculator(price, strike, time, vol, rate, dividend, option_type):
 
     return f'{option_price:.3g}; Δ: {100*delta:.1f}; γ: {10000*gamma:.2f}; θ: {theta:.2f}; ν: {vega:.1f}; ρ: {rho:0.1f}; leverage = {leverage:.1f}x'
 
-tab_plot = dbc.Tab(id='plot-tab', label="Plot Tab", children=[
-    dbc.Container(children=[
-    html.P(),
-    dbc.Row([component_price_rangeslider], justify='center'),
-    html.P(),
-    dbc.Row([component_time_rangeslider], justify='center'),
-    html.P(),
-    dbc.Row([
-        dbc.Col(["Strike Price ($): ", component_strike_price]),
-        dbc.Col(["Volatility (%): ", component_volatility]), 
-        dbc.Col(["Rate (%): ", component_rate]), 
-        dbc.Col(["Dividend (%): ", component_dividend]),
-        dbc.Col(["# of Time Components", component_time]),
-        dbc.Col([component_option_type], align='center')
-    ], justify='center', align='center'),
-    html.P(),
-    dbc.Row(component_graph, justify='center', align='center')],
-                  fluid=True)])
-
-tab_options = dbc.Tab(id='option-tab', label="Options Tab", children=[
-    options_container])
-
 tabs = dbc.Tabs(id='tabs', children=[
     tab_options,
-    tab_plot, tab_btcusdt, tab_ethusdt], persistence=True, persistence_type='memory')
+    tab_plot, tab_btcusdt, tab_ethusdt, tab_days_calc], persistence=True, persistence_type='memory')
 
 app.layout = dbc.Container(children=[
     dbc.Row(children=[color_mode_switch], justify='center'), 
