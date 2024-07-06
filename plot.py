@@ -215,31 +215,109 @@ def update_figure_template(switch_on):
     patch_figure["layout"]["template"] = template
     return patch_figure
 
+solusdt_interval_selector = dbc.RadioItems(id='solusdt-interval-selector', inline=True,
+                                           value='1d',
+                                           options=['1m', '1h', '4h', '1d', '1w', '1M'])
+
+solusdt_container = dbc.Container(children=[html.H4("SOLUSDT Binance"), 
+                                            solusdt_interval_selector,
+                                            dcc.Graph(id='solusdt-candlestick-plot', 
+                                                      responsive=True)],
+                                  fluid=True)
+
+tab_solusdt = dbc.Tab(id='solusdt-tab', label='SOLUSDT Graph', children=[solusdt_container])
+
+@callback(Output('solusdt-candlestick-plot', 'figure'),
+          Input('solusdt-interval-selector', 'value'),
+          Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value'))
+def display_sol_candlestick(value, theme):
+    if not binance.ping():
+        raise Exception("ERROR: Cannot contact binance. Try setting proxy")
+
+    if value not in binance.INTERVALS.keys():
+        raise Exception(f'INTERVAL ERROR: interval is not valid: {value}')
+    solusdt_df = binance.main(symbol='SOLUSDT', interval=value)
+    fig = go.Figure(go.Candlestick(x=solusdt_df.index,
+                                   open=solusdt_df.Open,
+                                   close=solusdt_df.Close,
+                                   low=solusdt_df.Low,
+                                   high=solusdt_df.High))
+    fig.layout.template = template='minty' if theme else 'minty_dark'
+    return fig
+
+@callback(Output("solusdt-candlestick-plot", "figure", allow_duplicate=True),
+          Input(dbt.ThemeSwitchAIO.ids.switch('theme'), 'value'),
+          prevent_initial_call=True)
+def update_figure_template(switch_on):
+    template = pio.templates["minty"] if switch_on else pio.templates["minty_dark"]
+    patch_figure = Patch()
+    patch_figure["layout"]["template"] = template
+    return patch_figure
+
+component_initial_date = dcc.DatePickerSingle(id='initial_date',
+                                              display_format='DD/MM/YYYY',
+                                              clearable=True,
+                                              persistence=True,
+                                              date=datetime.date.today())
+
+def find_nearest_friday(day = datetime.date.today()):
+    '''Finds next nearest friday.'''
+    while day.weekday() != 4:
+        day += datetime.timedelta(1)
+    return day
+
 component_date_picker_1 = dcc.DatePickerSingle(id='date-picker-1',
-                                               #month_format='MM/YYYY',
+                                               #month_format='DD/MM/YYYY',
                                                display_format='DD/MM/YYYY',
                                                clearable=True,
                                                persistence=True,
-                                               date=datetime.date.today())
+                                               date=find_nearest_friday(datetime.date.today()))
 component_date_picker_2 = dcc.DatePickerSingle(id='date-picker-2',
                                                #month_format='DD/MM/YYYY',
                                                display_format='DD/MM/YYYY',
                                                clearable=True,
                                                persistence=True,
-                                               date=datetime.date.today())
+                                               date=find_nearest_friday(datetime.date(2024,12,27)))
+component_date_picker_3 = dcc.DatePickerSingle(id='date-picker-3',
+                                               #month_format='DD/MM/YYYY',
+                                               display_format='DD/MM/YYYY',
+                                               clearable=True,
+                                               persistence=True,
+                                               date=datetime.date(2025,3,28))
+component_date_picker_4 = dcc.DatePickerSingle(id='date-picker-4',
+                                               #month_format='DD/MM/YYYY',
+                                               display_format='DD/MM/YYYY',
+                                               clearable=True,
+                                               persistence=True,
+                                               date=datetime.date(2025,6,27))
+component_date_picker_5 = dcc.DatePickerSingle(id='date-picker-5',
+                                               #month_format='DD/MM/YYYY',
+                                               display_format='DD/MM/YYYY',
+                                               clearable=True,
+                                               persistence=True,
+                                               date=datetime.date(2025,9,26))
+component_date_picker_6 = dcc.DatePickerSingle(id='date-picker-6',
+                                               #month_format='DD/MM/YYYY',
+                                               display_format='DD/MM/YYYY',
+                                               clearable=True,
+                                               persistence=True,
+                                               date=datetime.date(2025,12,26))
+
 component_num_of_days = html.Div(id='number-of-days')
 
 days_calc_container = dbc.Container(children=[html.H4('Dates Calculator'),
-                                              html.Div(component_date_picker_1),
+                                              html.Div(component_initial_date),
                                               html.P(),
-                                              html.Div(component_date_picker_2),
+                                              html.Div(children=[component_date_picker_1],
+                                                       id='dates-container'),
                                               component_num_of_days])
+
 tab_days_calc = dbc.Tab(id='dates-calc-tab', label='Days Calculator',
                         children=[days_calc_container])
 
 @callback(output=Output('number-of-days', 'children'),
-          inputs=[Input('date-picker-1', 'date'),
-                  Input('date-picker-2', 'date')])
+          inputs=[Input('initial-date', 'date'),
+                  Input('date-picker-1', 'date')])
 def calculate_days_interval(date_str_1, date_str_2):
   if (not date_str_1) or (not date_str_2):
     return 'Choose Dates'
@@ -323,9 +401,11 @@ def options_calculator(price, strike, time, vol, rate, dividend, option_type):
 
     return f'{option_price:.3g}; Δ: {100*delta:.1f}; γ: {10000*gamma:.2f}; θ: {theta:.2f}; ν: {vega:.1f}; ρ: {rho:0.1f}; leverage = {leverage:.1f}x'
 
-tabs = dbc.Tabs(id='tabs', children=[
-    tab_options,
-    tab_plot, tab_btcusdt, tab_ethusdt, tab_days_calc], persistence=True, persistence_type='memory')
+tabs = dbc.Tabs(id='tabs', children=[tab_options, tab_plot,
+                                     tab_btcusdt, tab_ethusdt,
+                                     tab_solusdt, tab_days_calc],
+                persistence=True,
+                persistence_type='memory')
 
 app.layout = dbc.Container(children=[
     dbc.Row(children=[color_mode_switch], justify='center'), 
