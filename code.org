@@ -298,7 +298,7 @@ Keep track of
           raise Exception('Error: Dates are too far apart.')
       return True
 #+end_src
-**** Main Methods
+**** Pull Data into Dataframe
 #+begin_src python
   def get_klines(symbol='ETHUSDT', interval='1d',
                  startTime=(datetime.datetime.now()-DAY_DELTA),
