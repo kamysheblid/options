@@ -4,7 +4,7 @@
 :END:
 Options multi calculator and plotter.
 
-
+Example launching.
 #+begin_src bash
   python3 main.py \
   	--price-range 3000 4000 \
@@ -17,8 +17,8 @@ Options multi calculator and plotter.
   	--server-port 8050 \
   	--proxy 0.0.0.0:2081
 #+end_src
-
 ** Requirements
+- python 3.11
 - pandas
 - numpy
 - sympy
