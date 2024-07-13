@@ -254,76 +254,135 @@ def update_figure_template(switch_on):
     patch_figure["layout"]["template"] = template
     return patch_figure
 
-component_initial_date = dcc.DatePickerSingle(id='initial_date',
+component_initial_date = dcc.DatePickerSingle(id='initial-date',
                                               display_format='DD/MM/YYYY',
                                               clearable=True,
                                               persistence=True,
                                               date=datetime.date.today())
 
-def find_nearest_friday(day = datetime.date.today()):
+def find_next_friday(day = datetime.date.today()):
     '''Finds next nearest friday.'''
-    while day.weekday() != 4:
+    while day.isoweekday() != 5:
         day += datetime.timedelta(1)
     return day
 
-component_date_picker_1 = dcc.DatePickerSingle(id='date-picker-1',
-                                               #month_format='DD/MM/YYYY',
-                                               display_format='DD/MM/YYYY',
-                                               clearable=True,
-                                               persistence=True,
-                                               date=find_nearest_friday(datetime.date.today()))
-component_date_picker_2 = dcc.DatePickerSingle(id='date-picker-2',
-                                               #month_format='DD/MM/YYYY',
-                                               display_format='DD/MM/YYYY',
-                                               clearable=True,
-                                               persistence=True,
-                                               date=find_nearest_friday(datetime.date(2024,12,27)))
-component_date_picker_3 = dcc.DatePickerSingle(id='date-picker-3',
-                                               #month_format='DD/MM/YYYY',
-                                               display_format='DD/MM/YYYY',
-                                               clearable=True,
-                                               persistence=True,
-                                               date=datetime.date(2025,3,28))
-component_date_picker_4 = dcc.DatePickerSingle(id='date-picker-4',
-                                               #month_format='DD/MM/YYYY',
-                                               display_format='DD/MM/YYYY',
-                                               clearable=True,
-                                               persistence=True,
-                                               date=datetime.date(2025,6,27))
-component_date_picker_5 = dcc.DatePickerSingle(id='date-picker-5',
-                                               #month_format='DD/MM/YYYY',
-                                               display_format='DD/MM/YYYY',
-                                               clearable=True,
-                                               persistence=True,
-                                               date=datetime.date(2025,9,26))
-component_date_picker_6 = dcc.DatePickerSingle(id='date-picker-6',
-                                               #month_format='DD/MM/YYYY',
-                                               display_format='DD/MM/YYYY',
-                                               clearable=True,
-                                               persistence=True,
-                                               date=datetime.date(2025,12,26))
+def find_last_friday_of_month(year=datetime.date.today().year, month=datetime.date.today().month):
+    if month<12:
+        date = datetime.date(year,month+1,1)
+    else:
+        date = datetime.date(year+1,1,1)
+    match date.weekday():
+        case 0|1|2|3:
+            delta = date.weekday() + 3
+        case 4:
+            delta = 0
+        case 5|6:
+            delta = date.weekday() - 4
+    date -= datetime.timedelta(days=delta)
+    return date
 
-component_num_of_days = html.Div(id='number-of-days')
+def find_quarterly_fridays(year):
+    '''Find important fridays. These months are important because a
+    huge amount of options expire on these dates.
+    '''
+    return [find_last_friday_of_month(year, month) for month in [3,6,9,12]]
+
+this_year = datetime.date.today().year
+important_dates = [date for date in
+                   [find_last_friday_of_month()]+find_quarterly_fridays(this_year)+find_quarterly_fridays(this_year+1)+find_quarterly_fridays(this_year+2)
+                   if date > datetime.date.today()][:6]
+
+date_picker_components = [[dcc.DatePickerSingle(id=f'date-picker-{i}',
+                                                display_format='DD/MM/YYYY',
+                                                clearable=True,
+                                                persistence=True,
+                                                date=important_dates[i]),
+                           html.Div(children=f'Placeholder text {i}', id=f'number-of-days-{i}'), html.P()]
+                                               for i in
+                          range(len(important_dates))]
+
+# (defun flatten (tree)
+#   (cond ((null tree) nil)
+# 	((listp tree) (append (flatten (car tree)) (flatten (cdr tree))))
+# 	(t (list tree))))
+
+def flatten(tree):
+    if isinstance(tree, list):
+        if len(tree) == 0:
+            return []
+        elif len(tree) == 1:
+            return flatten(tree[0])
+        elif len(tree) > 1:
+            return flatten(tree[0]) + flatten(tree[1:])
+    else:
+        return [tree]    
 
 days_calc_container = dbc.Container(children=[html.H4('Dates Calculator'),
-                                              html.Div(component_initial_date),
-                                              html.P(),
-                                              html.Div(children=[component_date_picker_1],
-                                                       id='dates-container'),
-                                              component_num_of_days])
+                                              html.Div(children=['Initial Date: ', component_initial_date]),
+                                              html.P()] + flatten(date_picker_components))
 
 tab_days_calc = dbc.Tab(id='dates-calc-tab', label='Days Calculator',
                         children=[days_calc_container])
 
-@callback(output=Output('number-of-days', 'children'),
+@callback(output=Output(date_picker_components[0][1].id, 'children'),
           inputs=[Input('initial-date', 'date'),
-                  Input('date-picker-1', 'date')])
-def calculate_days_interval(date_str_1, date_str_2):
+                  Input(date_picker_components[0][0].id, 'date')])
+def calculate_days_interval_0(date_str_1, date_str_2):
   if (not date_str_1) or (not date_str_2):
     return 'Choose Dates'
   date1 = datetime.date.fromisoformat(date_str_1)
   date2 = datetime.date.fromisoformat(date_str_2)
-  return f'{abs(date1-date2).days} days'
+  return f'{abs((date1-date2).days)} days'
+
+@callback(output=Output(date_picker_components[1][1].id, 'children'),
+          inputs=[Input('initial-date', 'date'),
+                  Input(date_picker_components[1][0].id, 'date')])
+def calculate_days_interval_1(date_str_1, date_str_2):
+  if (not date_str_1) or (not date_str_2):
+    return 'Choose Dates'
+  date1 = datetime.date.fromisoformat(date_str_1)
+  date2 = datetime.date.fromisoformat(date_str_2)
+  return f'{abs((date1-date2).days)} days'
+
+@callback(output=Output(date_picker_components[2][1].id, 'children'),
+          inputs=[Input('initial-date', 'date'),
+                  Input(date_picker_components[2][0].id, 'date')])
+def calculate_days_interval_2(date_str_1, date_str_2):
+  if (not date_str_1) or (not date_str_2):
+    return 'Choose Dates'
+  date1 = datetime.date.fromisoformat(date_str_1)
+  date2 = datetime.date.fromisoformat(date_str_2)
+  return f'{abs((date1-date2).days)} days'
+
+@callback(output=Output(date_picker_components[3][1].id, 'children'),
+          inputs=[Input('initial-date', 'date'),
+                  Input(date_picker_components[3][0].id, 'date')])
+def calculate_days_interval_3(date_str_1, date_str_2):
+  if (not date_str_1) or (not date_str_2):
+    return 'Choose Dates'
+  date1 = datetime.date.fromisoformat(date_str_1)
+  date2 = datetime.date.fromisoformat(date_str_2)
+  return f'{abs((date1-date2).days)} days'
+
+@callback(output=Output(date_picker_components[4][1].id, 'children'),
+          inputs=[Input('initial-date', 'date'),
+                  Input(date_picker_components[4][0].id, 'date')])
+def calculate_days_interval_4(date_str_1, date_str_2):
+  if (not date_str_1) or (not date_str_2):
+    return 'Choose Dates'
+  date1 = datetime.date.fromisoformat(date_str_1)
+  date2 = datetime.date.fromisoformat(date_str_2)
+  return f'{abs((date1-date2).days)} days'
+
+@callback(output=Output(date_picker_components[5][1].id, 'children'),
+          inputs=[Input('initial-date', 'date'),
+                  Input(date_picker_components[5][0].id, 'date')])
+def calculate_days_interval_5(date_str_1, date_str_2):
+  if (not date_str_1) or (not date_str_2):
+    return 'Choose Dates'
+  date1 = datetime.date.fromisoformat(date_str_1)
+  date2 = datetime.date.fromisoformat(date_str_2)
+  return f'{abs((date1-date2).days)} days'
 
 options_container = dbc.Container(children=[
     dbc.Button("Add Option", id="add-option-btn", n_clicks=0),
@@ -401,11 +460,9 @@ def options_calculator(price, strike, time, vol, rate, dividend, option_type):
 
     return f'{option_price:.3g}; Δ: {100*delta:.1f}; γ: {10000*gamma:.2f}; θ: {theta:.2f}; ν: {vega:.1f}; ρ: {rho:0.1f}; leverage = {leverage:.1f}x'
 
-tabs = dbc.Tabs(id='tabs', children=[tab_options, tab_plot,
-                                     tab_btcusdt, tab_ethusdt,
-                                     tab_solusdt, tab_days_calc],
-                persistence=True,
-                persistence_type='memory')
+tabs = dbc.Tabs(id='tabs', children=[
+    tab_options,
+    tab_plot, tab_btcusdt, tab_ethusdt, tab_solusdt, tab_days_calc], persistence=True, persistence_type='session')
 
 app.layout = dbc.Container(children=[
     dbc.Row(children=[color_mode_switch], justify='center'), 
