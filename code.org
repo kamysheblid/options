@@ -460,6 +460,8 @@ is plotted.
 TODO:
 - Add multiple options to plotter
 - Add date interval calculator
+- Save Binance price data to disk so it doesnt need to be pulled all
+  the time.
 *** Imports
 #+begin_src python
   import numpy as np
