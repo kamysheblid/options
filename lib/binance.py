@@ -82,6 +82,7 @@ def get_symbols():
     ic(req)
     return np.array([elt['symbol'] for elt in json.loads(req.text)['symbols']])
 
+SYMBOLS = get_symbols()
 def ensure_symbol(symbol):
     global SYMBOLS
     if SYMBOLS is None:
