@@ -762,7 +762,7 @@ plot. Callback is needed to switch between different intervals.
       patch_figure["layout"]["template"] = template
       return patch_figure
 #+end_src
-**** TODO SOLUSDT Tab Components
+**** SOLUSDT Tab Components
 SOLUSDT candlestick plot. Gets an interval from user and displays
 plot. Callback is needed to switch between different intervals.
 #+begin_src python
