@@ -805,7 +805,7 @@ plot. Callback is needed to switch between different intervals.
       patch_figure["layout"]["template"] = template
       return patch_figure
 #+end_src
-**** TODO Date Calculator
+**** Date Calculator
 Calculate the following:
 1) +Days between two dates+ (Completed)
 2) Add multiple other date pickers preset with quarterly fridays
